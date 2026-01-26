@@ -1343,6 +1343,44 @@ export default function EquipmentInventory() {
         }))
     }
 
+    const reloadEquipment = async () => {
+        try {
+            setLoading(true)
+            const headers = {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+
+            const queryParams = new URLSearchParams()
+            Object.keys(filters).forEach(key => {
+                if (filters[key]) {
+                    queryParams.append(key, filters[key])
+                }
+            })
+            queryParams.append('limit', '1000')
+
+            const equipmentResponse = await fetch(`${API_BASE_URL}/equipment?${queryParams}`, { headers })
+            if (equipmentResponse.ok) {
+                const equipmentData = await equipmentResponse.json()
+                setEquipment(equipmentData.data?.equipment || [])
+
+                const equipmentList = equipmentData.data?.equipment || []
+                const calculatedStats = {
+                    total: equipmentList.length,
+                    available: equipmentList.filter(item => item.status === 'available').length,
+                    inUse: equipmentList.filter(item => item.status === 'in_use').length,
+                    maintenance: equipmentList.filter(item => item.status === 'maintenance').length,
+                    broken: equipmentList.filter(item => item.status === 'broken').length
+                }
+                setStats(calculatedStats)
+            }
+        } catch (error) {
+            console.error('Error reloading equipment:', error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
     const handleStatusUpdate = async (equipmentId, newStatus) => {
         try {
             const headers = {
@@ -1413,6 +1451,65 @@ export default function EquipmentInventory() {
             } catch (error) {
                 console.error('Error deleting equipment:', error)
                 setError('Failed to delete equipment')
+            }
+        }
+    }
+
+    const handleBulkDeleteByLab = async () => {
+        if (!filters.lab_id) {
+            setError('Please select a lab first to perform bulk delete')
+            return
+        }
+
+        const selectedLab = labs.find(lab => lab.id === parseInt(filters.lab_id))
+        const labName = selectedLab?.name || 'this lab'
+        const equipmentInLab = equipment.filter(item => item.lab_id === parseInt(filters.lab_id))
+
+        if (equipmentInLab.length === 0) {
+            setError('No equipment found in the selected lab')
+            return
+        }
+
+        const confirmMessage = `⚠️ WARNING: This will delete ALL ${equipmentInLab.length} equipment items from "${labName}".\n\nThis action cannot be undone. Are you absolutely sure?`
+        
+        if (window.confirm(confirmMessage)) {
+            try {
+                setLoading(true)
+                const headers = {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+
+                const response = await fetch(`${API_BASE_URL}/equipment/lab/${filters.lab_id}/bulk`, {
+                    method: 'DELETE',
+                    headers
+                })
+
+                if (response.ok) {
+                    const result = await response.json()
+                    // Refresh equipment list
+                    setEquipment(prev => prev.filter(item => item.lab_id !== parseInt(filters.lab_id)))
+                    const updatedEquipment = equipment.filter(item => item.lab_id !== parseInt(filters.lab_id))
+                    const newStats = {
+                        total: updatedEquipment.length,
+                        available: updatedEquipment.filter(item => item.status === 'available').length,
+                        inUse: updatedEquipment.filter(item => item.status === 'in_use').length,
+                        maintenance: updatedEquipment.filter(item => item.status === 'maintenance').length,
+                        broken: updatedEquipment.filter(item => item.status === 'broken').length
+                    }
+                    setStats(newStats)
+                    alert(`✅ ${result.message}`)
+                    // Clear lab filter
+                    setFilters(prev => ({ ...prev, lab_id: '' }))
+                } else {
+                    const result = await response.json()
+                    setError(result.message || 'Failed to delete equipment')
+                }
+            } catch (error) {
+                console.error('Error bulk deleting equipment:', error)
+                setError('Failed to delete equipment')
+            } finally {
+                setLoading(false)
             }
         }
     }
@@ -1498,6 +1595,18 @@ export default function EquipmentInventory() {
                             </div>
                             {user?.role === 'admin' && (
                                 <div className="flex items-center space-x-3">
+                                    {filters.lab_id && (
+                                        <button
+                                            onClick={handleBulkDeleteByLab}
+                                            className="px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all shadow-md hover:shadow-lg flex items-center space-x-2 font-medium"
+                                            title="Delete all equipment from selected lab"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                            <span>Delete All from Lab</span>
+                                        </button>
+                                    )}
                                     <button
                                         onClick={() => setShowImportModal(true)}
                                         className="px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all shadow-md hover:shadow-lg flex items-center space-x-2 font-medium"
@@ -1849,8 +1958,8 @@ export default function EquipmentInventory() {
                     onClose={() => setShowImportModal(false)}
                     onImportComplete={() => {
                         setShowImportModal(false)
-                        // Refresh equipment list after import by triggering filters change
-                        setFilters(prev => ({ ...prev }))
+                        // Reload equipment list after import
+                        reloadEquipment()
                     }}
                     labs={labs}
                     token={token}

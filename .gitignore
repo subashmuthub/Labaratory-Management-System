@@ -87,3 +87,4 @@ test-*.js
 # Debug and development files
 debug.log
 *.debug
+.vercel

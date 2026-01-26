@@ -1,7 +1,9 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
+const emailService = require('../services/emailService');
 
 const router = express.Router();
 
@@ -95,6 +97,15 @@ router.post('/register', registerValidation, async (req, res) => {
 
         console.log('✅ User created successfully:', newUser.id);
 
+        // Generate and send verification OTP
+        try {
+            const otp = await newUser.generateOTP('registration');
+            await emailService.sendOTP(newUser.email, otp, 'registration');
+            console.log(`📧 Registration OTP sent to ${newUser.email}`);
+        } catch (emailError) {
+            console.log('⚠️ Failed to send registration OTP, but user created:', emailError.message);
+        }
+
         const token = generateToken(newUser);
 
         const userData = {
@@ -103,6 +114,7 @@ router.post('/register', registerValidation, async (req, res) => {
             email: newUser.email,
             role: newUser.role,
             is_active: newUser.is_active,
+            is_email_verified: newUser.is_email_verified,
             created_at: newUser.created_at
         };
 
@@ -110,10 +122,11 @@ router.post('/register', registerValidation, async (req, res) => {
 
         res.status(201).json({
             success: true,
-            message: 'User registered successfully',
+            message: 'User registered successfully. Please check your email for verification code.',
             data: {
                 user: userData,
-                token: token
+                token: token,
+                requires_email_verification: !newUser.is_email_verified
             }
         });
 
@@ -180,7 +193,7 @@ router.post('/login', loginValidation, async (req, res) => {
         }
 
         console.log('🔒 Comparing password...');
-        const isPasswordValid = (password === user.password);
+        const isPasswordValid = await bcrypt.compare(password, user.password);
 
         if (!isPasswordValid) {
             console.log('❌ Invalid password for:', email);
@@ -274,6 +287,64 @@ router.get('/verify', async (req, res) => {
         res.status(401).json({
             success: false,
             message: 'Invalid token'
+        });
+    }
+});
+
+// @route   POST /api/auth/forgot-password
+router.post('/forgot-password', async (req, res) => {
+    try {
+        console.log('🔐 Forgot password request:', req.body.email);
+
+        const { email } = req.body;
+        
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email is required'
+            });
+        }
+
+        // Check if user exists
+        const user = await User.findOne({
+            where: { email: email.toLowerCase() }
+        });
+
+        // Always return success message for security (don't reveal if email exists)
+        if (!user) {
+            console.log('❌ User not found for forgot password:', email);
+            return res.json({
+                success: true,
+                message: 'If an account with this email exists, a password reset link will be sent.'
+            });
+        }
+
+        // Generate temporary password (in a real app, you'd send a secure reset token)
+        const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+        console.log(`🔐 Generated temporary password for ${user.email}: ${tempPassword}`);
+
+        // Hash the temporary password
+        const bcrypt = require('bcrypt');
+        const hashedPassword = await bcrypt.hash(tempPassword, 12);
+
+        // Update user's password
+        await user.update({ password: hashedPassword });
+
+        // In production, send email with reset link instead
+        console.log(`📧 Temporary password for ${user.email}: ${tempPassword}`);
+        
+        res.json({
+            success: true,
+            message: 'If an account with this email exists, a password reset link will be sent.',
+            // Include temp password in development mode
+            ...(process.env.NODE_ENV === 'development' && { tempPassword })
+        });
+
+    } catch (error) {
+        console.error('💥 Error in forgot password:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Unable to process password reset. Please try again later.'
         });
     }
 });

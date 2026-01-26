@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { maintenanceAPI } from '../services/api'
+import { Sidebar, AppHeader, getNavigationItems } from '../components/common/Navigation'
 
 export default function MaintenanceSchedule() {
     // Maintenance-specific state
@@ -12,6 +13,19 @@ export default function MaintenanceSchedule() {
         inProgress: 0,
         completed: 0,
         overdue: 0
+    })
+
+    // Navigation stats state
+    const [navStats, setNavStats] = useState({
+        totalLabs: 0,
+        totalEquipment: 0,
+        activeBookings: 0,
+        totalIncidents: 0,
+        pendingOrders: 0,
+        totalUsers: 0,
+        completedTrainings: 0,
+        pendingMaintenances: 0,
+        unreadNotifications: 0
     })
     const [showMaintenanceForm, setShowMaintenanceForm] = useState(false)
     const [newMaintenance, setNewMaintenance] = useState({
@@ -39,139 +53,37 @@ export default function MaintenanceSchedule() {
     const userMenuRef = useRef(null)
     const notificationRef = useRef(null)
 
-    // Sidebar Navigation Items (same as Dashboard)
-    const navigationItems = [
-        {
-            id: 'dashboard',
-            title: 'Dashboard',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v3H8V5z"></path>
-                </svg>
-            ),
-            path: '/dashboard',
-            show: true,
-            badge: null
-        },
-        {
-            id: 'lab-management',
-            title: 'Lab Management',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                </svg>
-            ),
-            path: '/lab-management',
-            show: true,
-            badge: null
-        },
-        {
-            id: 'equipment',
-            title: 'Equipment',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                </svg>
-            ),
-            path: '/equipment',
-            show: true,
-            badge: null
-        },
-        {
-            id: 'bookings',
-            title: 'Bookings',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-            ),
-            path: '/bookings',
-            show: true,
-            badge: null
-        },
-        {
-            id: 'calendar',
-            title: 'Calendar',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-            ),
-            path: '/calendar',
-            show: true,
-            badge: null
-        },
-        {
-            id: 'training',
-            title: 'Training',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                </svg>
-            ),
-            path: '/training',
-            show: true,
-            badge: null
-        },
-        {
-            id: 'incidents',
-            title: 'Incidents',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.982 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                </svg>
-            ),
-            path: '/incidents',
-            show: true,
-            badge: null
-        },
-        {
-            id: 'orders',
-            title: 'Orders',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
-                </svg>
-            ),
-            path: '/orders',
-            show: user?.role === 'admin',
-            badge: null
-        },
-        {
-            id: 'users',
-            title: 'Users',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                </svg>
-            ),
-            path: '/users',
-            show: user?.role === 'admin',
-            badge: null
-        },
-        {
-            id: 'reports',
-            title: 'Reports',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                </svg>
-            ),
-            path: '/reports',
-            show: user?.role === 'admin',
-            badge: null
-        },
-        {
-            id: 'maintenance',
-            title: 'Maintenance',
-            icon: (<span className="text-xl">🔧</span>),
-            path: '/maintenance',
-            show: user?.role === 'admin' || user?.role === 'lab_technician',
-            badge: maintenance.length > 0 ? maintenance.length : null,
-            badgeColor: 'bg-yellow-500'
+    // Fetch navigation stats
+    const fetchNavigationStats = async () => {
+        try {
+            const results = await Promise.allSettled([
+                fetch('/api/labs/stats', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+                fetch('/api/equipment/stats', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+                fetch('/api/bookings/stats', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+                fetch('/api/users/stats', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+                fetch('/api/incidents/stats', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+                fetch('/api/orders/stats', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+                fetch('/api/training/stats', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+                fetch('/api/maintenance/stats', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
+            ])
+
+            const [labsRes, equipmentRes, bookingsRes, usersRes, incidentsRes, ordersRes, trainingRes, maintenanceRes] = results
+
+            setNavStats({
+                totalLabs: labsRes.status === 'fulfilled' ? (labsRes.value?.total || labsRes.value?.totalLabs || 0) : 0,
+                totalEquipment: equipmentRes.status === 'fulfilled' ? (equipmentRes.value?.total || equipmentRes.value?.totalEquipment || 0) : 0,
+                activeBookings: bookingsRes.status === 'fulfilled' ? (bookingsRes.value?.active || bookingsRes.value?.activeBookings || 0) : 0,
+                totalIncidents: incidentsRes.status === 'fulfilled' ? (incidentsRes.value?.total || incidentsRes.value?.totalIncidents || 0) : 0,
+                pendingOrders: ordersRes.status === 'fulfilled' ? (ordersRes.value?.pending || ordersRes.value?.pendingOrders || 0) : 0,
+                totalUsers: usersRes.status === 'fulfilled' ? (usersRes.value?.total || usersRes.value?.totalUsers || 0) : 0,
+                completedTrainings: trainingRes.status === 'fulfilled' ? (trainingRes.value?.completed || trainingRes.value?.completedTrainings || 0) : 0,
+                pendingMaintenances: maintenanceRes.status === 'fulfilled' ? (maintenanceRes.value?.pending || maintenanceRes.value?.pendingMaintenances || 0) : 0,
+                unreadNotifications: 0
+            })
+        } catch (error) {
+            console.error('Error fetching navigation stats:', error)
         }
-    ]
+    }
 
     // Time update effect
     useEffect(() => {
@@ -203,6 +115,7 @@ export default function MaintenanceSchedule() {
             return
         }
         loadMaintenanceData()
+        fetchNavigationStats()
     }, [token, navigate])
 
     const loadMaintenanceData = async () => {
@@ -401,90 +314,12 @@ export default function MaintenanceSchedule() {
 
     return (
     <div className="min-h-screen bg-gray-50">
-            {/* Sidebar */}
-            <div className={`fixed inset-y-0 left-0 z-50 ${sidebarCollapsed ? 'w-16' : 'w-64'} bg-white shadow-lg border-r border-gray-200 transition-all duration-300`}>
-                {/* Sidebar Header */}
-                <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200">
-                    {!sidebarCollapsed && (
-                        <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                                <span className="text-white font-bold text-sm">L</span>
-                            </div>
-                            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                                LabMS
-                            </h1>
-                        </div>
-                    )}
-                    <button
-                        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                        className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                    >
-                        <svg className={`w-5 h-5 text-gray-600 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
-                        </svg>
-                    </button>
-                </div>
-
-                {/* Navigation Items */}
-                <nav className="mt-6 px-3">
-                    <div className="space-y-1">
-                        {navigationItems.filter(item => item.show).map((item) => {
-                            const isActive = location.pathname === item.path
-                            return (
-                                <button
-                                    key={item.id}
-                                    onClick={() => handleNavigation(item.path)}
-                                    className={`w-full flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${isActive
-                                        ? 'bg-blue-50 text-blue-700 border-r-4 border-blue-700'
-                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                                        }`}
-                                    title={sidebarCollapsed ? item.title : ''}
-                                >
-                                    <div className="flex items-center justify-center w-5 h-5">
-                                        {item.icon}
-                                    </div>
-                                    {!sidebarCollapsed && (
-                                        <>
-                                            <span className="ml-3 flex-1 text-left">{item.title}</span>
-                                            {item.badge && (
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.badgeColor || 'bg-blue-100 text-blue-800'
-                                                    }`}>
-                                                    {item.badge}
-                                                </span>
-                                            )}
-                                        </>
-                                    )}
-                                    {sidebarCollapsed && item.badge && (
-                                        <span className={`absolute left-8 top-2 w-2 h-2 rounded-full ${item.badgeColor || 'bg-blue-500'
-                                            }`}></span>
-                                    )}
-                                </button>
-                            )
-                        })}
-                    </div>
-                </nav>
-
-                {/* Sidebar Footer */}
-                {!sidebarCollapsed && (
-                    <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
-                        <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                                <span className="text-white font-medium text-sm">
-                                    {(user?.name || user?.email)?.charAt(0)?.toUpperCase()}
-                                </span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">
-                                    {user?.name || user?.email}
-                                </p>
-                                <p className="text-xs text-gray-500 capitalize">
-                                    {user?.role}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
+            <Sidebar
+                sidebarCollapsed={sidebarCollapsed}
+                setSidebarCollapsed={setSidebarCollapsed}
+                currentPath={location.pathname}
+                stats={navStats}
+            />
 
             {/* Main Content */}
             <div className={`${sidebarCollapsed ? 'ml-16' : 'ml-64'} transition-all duration-300 min-h-screen`}>

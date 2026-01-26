@@ -7,7 +7,7 @@ taskkill /f /im node.exe >nul 2>&1
 
 echo.
 echo Starting Backend Server...
-start "LabMS Backend" cmd /k "cd /d D:\MWT_PROJECT\zbackend && echo Backend Starting... && node server.js"
+start "LabMS Backend" cmd /k "cd /d "%~dp0zbackend" && echo Backend Starting... && node server.js"
 
 echo.
 echo Waiting 5 seconds for backend to start...
@@ -15,7 +15,7 @@ timeout /t 5 /nobreak >nul
 
 echo.
 echo Starting Frontend Server...
-start "LabMS Frontend" cmd /k "cd /d D:\MWT_PROJECT\frontend && echo Frontend Starting... && npm run dev"
+start "LabMS Frontend" cmd /k "cd /d "%~dp0frontend" && echo Frontend Starting... && npm run dev"
 
 echo.
 echo ================================================

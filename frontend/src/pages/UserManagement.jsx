@@ -208,54 +208,35 @@ export default function UserManagement() {
         // Set document title
         document.title = 'Users | NEC LabMS'
         
-        checkAuthentication()
-    }, [])
-
-    useEffect(() => {
-        if (isAuthenticated && user) {
-            if (user.role === 'admin' || user.role === 'teacher') {
-                loadUserData()
-            } else {
-                setError('You do not have permission to access user management')
-                setLoading(false)
-            }
-        }
-    }, [isAuthenticated, user])
-
-    const checkAuthentication = () => {
+        // Check if user has token
         if (!token) {
             navigate('/login')
             return
         }
 
-        try {
-            const payload = JSON.parse(atob(token.split('.')[1]))
-            const currentTime = Date.now() / 1000
-
-            if (payload.exp < currentTime) {
-                logout()
-                navigate('/login')
-                return
-            }
-        } catch (error) {
-            logout()
-            navigate('/login')
-            return
+        // Load data if user is admin or teacher
+        if (user && (user.role === 'admin' || user.role === 'teacher')) {
+            loadUserData()
+        } else if (user) {
+            setError('You do not have permission to access user management')
+            setLoading(false)
         }
-    }
+    }, [token, user, navigate])
 
     const loadUserData = async () => {
         setLoading(true)
         setError('')
 
         try {
+            console.log('🔄 Loading user data...')
             await Promise.all([
                 fetchUsers(),
                 fetchUserStats()
             ])
+            console.log('✅ User data loaded successfully')
         } catch (err) {
-            console.error('Error loading user data:', err)
-            setError('Failed to load user data')
+            console.error('❌ Error loading user data:', err)
+            setError('Failed to load user data: ' + err.message)
         } finally {
             setLoading(false)
         }
@@ -263,9 +244,12 @@ export default function UserManagement() {
 
     const fetchUsers = async () => {
         try {
+            console.log('📥 Fetching users...')
             const data = await usersAPI.getAll()
-            setUsers(data)
+            console.log('✅ Users fetched:', data)
+            setUsers(Array.isArray(data) ? data : [])
         } catch (err) {
+            console.error('❌ Error fetching users:', err)
             if (err.message.includes('401') || err.message.includes('Unauthorized')) {
                 logout()
                 navigate('/login')
@@ -277,9 +261,18 @@ export default function UserManagement() {
 
     const fetchUserStats = async () => {
         try {
+            console.log('📊 Fetching user stats...')
             const data = await usersAPI.getStats()
-            setStats(data)
+            console.log('✅ User stats fetched:', data)
+            // Map API response to match state structure
+            setStats({
+                totalUsers: data.total || 0,
+                students: data.students || 0,
+                teachers: data.teachers || 0,
+                admins: data.admins || 0
+            })
         } catch (err) {
+            console.error('❌ Error fetching user stats:', err)
             if (err.message.includes('401') || err.message.includes('Unauthorized')) {
                 logout()
                 navigate('/login')

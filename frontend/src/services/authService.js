@@ -1,5 +1,7 @@
 // src/services/authService.js - Enhanced Authentication Service
-const API_BASE_URL = '/api'
+import { apiConfig } from '../config/api.js'
+
+const API_BASE_URL = 'http://localhost:5000/api'  // Use direct backend URL for testing
 
 // Gmail validation - only allow gmail.com addresses
 export const isValidGmail = (email) => {
@@ -13,21 +15,27 @@ export const isValidNecEmail = (email) => {
     return necRegex.test(email)
 }
 
-// Combined validation for login (Gmail OR NEC)
+// General email validation - allow any valid email format
+export const isValidEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+}
+
+// Combined validation for login (ANY valid email - matches backend)
 export const isValidLoginEmail = (email) => {
+    return isValidEmail(email) // Allow any valid email for login
+}
+
+// Registration validation (Gmail OR NEC for OTP features)
+export const isValidRegistrationEmail = (email) => {
     return isValidGmail(email) || isValidNecEmail(email)
 }
 
-// Registration validation (Gmail only)
-export const isValidRegistrationEmail = (email) => {
-    return isValidGmail(email)
-}
-
-// Send OTP to Gmail (registration only)
+// Send OTP to Gmail (registration only) with enhanced error handling
 export const sendOTP = async (email) => {
     try {
         if (!isValidRegistrationEmail(email)) {
-            return { success: false, message: 'Only Gmail addresses are allowed for registration' }
+            return { success: false, message: 'Please use a valid Gmail (@gmail.com) or NEC (@nec.edu.in) email address' }
         }
 
         const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
@@ -39,6 +47,29 @@ export const sendOTP = async (email) => {
         })
 
         const data = await response.json()
+        
+        // Handle specific error codes from backend
+        if (!data.success) {
+            if (data.code === 'EMAIL_SERVICE_UNAVAILABLE') {
+                return { 
+                    success: false, 
+                    message: 'Email service is temporarily unavailable. Please try again later or contact support.',
+                    code: 'EMAIL_SERVICE_UNAVAILABLE'
+                }
+            } else if (data.code === 'EMAIL_SEND_FAILED') {
+                return { 
+                    success: false, 
+                    message: 'Failed to send verification email. Please check your email address and try again.',
+                    code: 'EMAIL_SEND_FAILED'
+                }
+            } else {
+                return { 
+                    success: false, 
+                    message: data.message || 'Failed to send OTP. Please try again.'
+                }
+            }
+        }
+        
         return data
     } catch (error) {
         console.error('Send OTP error:', error)
@@ -69,7 +100,7 @@ export const verifyOTP = async (email, otp) => {
 export const registerWithOTP = async (userData, otp) => {
     try {
         if (!isValidRegistrationEmail(userData.email)) {
-            return { success: false, message: 'Only Gmail addresses are allowed for registration' }
+            return { success: false, message: 'Please use a valid Gmail (@gmail.com) or NEC (@nec.edu.in) email address' }
         }
 
         const response = await fetch(`${API_BASE_URL}/auth/register-with-otp`, {
@@ -101,8 +132,8 @@ export const registerWithOTP = async (userData, otp) => {
 // Login with password (for existing users with Gmail or NEC email)
 export const loginWithPassword = async (email, password) => {
     try {
-        if (!isValidLoginEmail(email)) {
-            return { success: false, message: 'Please use a valid Gmail or NEC email address' }
+        if (!isValidEmail(email)) {
+            return { success: false, message: 'Please enter a valid email address' }
         }
 
         const response = await fetch(`${API_BASE_URL}/auth/login`, {
@@ -167,6 +198,8 @@ export const loginWithOTP = async (email, otp) => {
 // Get Google OAuth URL
 export const getGoogleAuthUrl = async () => {
     try {
+        console.log('🔗 Requesting Google OAuth URL from:', `${API_BASE_URL}/auth/oauth/google`)
+        
         const response = await fetch(`${API_BASE_URL}/auth/oauth/google`, {
             method: 'GET',
             headers: {
@@ -174,11 +207,16 @@ export const getGoogleAuthUrl = async () => {
             }
         })
 
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+
         const data = await response.json()
+        console.log('✅ Google OAuth URL response:', data)
         return data
     } catch (error) {
-        console.error('Google OAuth URL error:', error)
-        return { success: false, message: 'Failed to get Google auth URL' }
+        console.error('❌ Google OAuth URL error:', error)
+        return { success: false, message: `Failed to get Google auth URL: ${error.message}` }
     }
 }
 
@@ -203,14 +241,28 @@ export const getGitHubAuthUrl = async () => {
 // Google OAuth login
 export const loginWithGoogle = async () => {
     try {
-        const response = await getGoogleAuthUrl()
-        if (response.success && response.authUrl) {
-            window.location.href = response.authUrl
+        console.log('🚀 Initiating Google OAuth login...')
+        
+        // Direct redirect to backend OAuth URL to bypass potential frontend issues
+        const backendOAuthUrl = 'http://localhost:5000/api/auth/oauth/google';
+        
+        console.log('🔗 Fetching OAuth URL from backend...');
+        const response = await fetch(backendOAuthUrl);
+        const data = await response.json();
+        
+        if (data.success && data.authUrl) {
+            console.log('✅ Got OAuth URL, redirecting to Google...');
+            console.log('📝 Auth URL:', data.authUrl);
+            window.location.href = data.authUrl;
+        } else {
+            console.error('❌ Failed to get OAuth URL:', data);
+            throw new Error(data.message || 'Failed to initiate OAuth');
         }
-        return response
+        
+        return { success: true };
     } catch (error) {
-        console.error('Google login error:', error)
-        return { success: false, message: 'Google login failed' }
+        console.error('❌ Google login error:', error);
+        throw new Error(`Google login failed: ${error.message}`);
     }
 }
 

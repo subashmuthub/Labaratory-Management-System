@@ -43,7 +43,7 @@ const User = sequelize.define('User', {
         }
     },
     role: {
-        type: DataTypes.ENUM('student', 'teacher', 'lab_assistant', 'lab_technician', 'admin'),
+        type: DataTypes.ENUM('student', 'faculty', 'teacher', 'lab_assistant', 'lab_technician', 'admin'),
         allowNull: false,
         defaultValue: 'student'
     },
@@ -101,6 +101,33 @@ const User = sequelize.define('User', {
     avatar_url: {
         type: DataTypes.TEXT,
         allowNull: true
+    },
+    // OTP fields
+    otp_code: {
+        type: DataTypes.STRING(6),
+        allowNull: true
+    },
+    otp_expires_at: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    otp_purpose: {
+        type: DataTypes.ENUM('registration', 'login', 'password-reset', 'verification'),
+        allowNull: true
+    },
+    otp_attempts: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
+    },
+    // Password reset token for additional security
+    reset_password_token: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    reset_password_expires: {
+        type: DataTypes.DATE,
+        allowNull: true
     }
 }, {
     tableName: 'users',
@@ -157,6 +184,110 @@ User.prototype.updateLastLogin = async function () {
 User.prototype.setPassword = async function (newPassword) {
     this.password = newPassword;
     return await this.save({ fields: ['password'] });
+};
+
+// OTP-related methods
+User.prototype.generateOTP = async function (purpose = 'verification') {
+    const emailService = require('../services/emailService');
+    const otp = emailService.generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+
+    this.otp_code = otp;
+    this.otp_expires_at = expiresAt;
+    this.otp_purpose = purpose;
+    this.otp_attempts = 0;
+
+    await this.save({ 
+        fields: ['otp_code', 'otp_expires_at', 'otp_purpose', 'otp_attempts'] 
+    });
+
+    return otp;
+};
+
+User.prototype.verifyOTP = function (enteredOTP) {
+    console.log('🔍 OTP verification:', {
+        hasCode: !!this.otp_code,
+        hasExpiry: !!this.otp_expires_at,
+        attempts: this.otp_attempts,
+        expired: this.otp_expires_at ? new Date() > this.otp_expires_at : 'no expiry',
+        codeMatch: this.otp_code === enteredOTP.toString()
+    });
+
+    // Check if OTP exists and hasn't expired
+    if (!this.otp_code || !this.otp_expires_at) {
+        return { success: false, message: 'No OTP found. Please request a new one.' };
+    }
+
+    if (new Date() > this.otp_expires_at) {
+        return { success: false, message: 'OTP has expired. Please request a new one.' };
+    }
+
+    if (this.otp_attempts >= 5) {
+        return { success: false, message: 'Too many failed attempts. Please request a new OTP.' };
+    }
+
+    if (this.otp_code !== enteredOTP.toString()) {
+        return { success: false, message: 'Invalid OTP. Please try again.' };
+    }
+
+    return { success: true, message: 'OTP verified successfully.' };
+};
+
+User.prototype.incrementOTPAttempts = async function () {
+    this.otp_attempts = this.otp_attempts + 1;
+    await this.save({ fields: ['otp_attempts'] });
+    return this.otp_attempts;
+};
+
+User.prototype.clearOTP = async function () {
+    this.otp_code = null;
+    this.otp_expires_at = null;
+    this.otp_purpose = null;
+    this.otp_attempts = 0;
+
+    await this.save({ 
+        fields: ['otp_code', 'otp_expires_at', 'otp_purpose', 'otp_attempts'] 
+    });
+};
+
+User.prototype.generatePasswordResetToken = async function () {
+    const crypto = require('crypto');
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+
+    this.reset_password_token = resetToken;
+    this.reset_password_expires = expiresAt;
+
+    await this.save({ 
+        fields: ['reset_password_token', 'reset_password_expires'] 
+    });
+
+    return resetToken;
+};
+
+User.prototype.verifyPasswordResetToken = function (token) {
+    if (!this.reset_password_token || !this.reset_password_expires) {
+        return { success: false, message: 'No reset token found.' };
+    }
+
+    if (new Date() > this.reset_password_expires) {
+        return { success: false, message: 'Reset token has expired.' };
+    }
+
+    if (this.reset_password_token !== token) {
+        return { success: false, message: 'Invalid reset token.' };
+    }
+
+    return { success: true, message: 'Reset token verified.' };
+};
+
+User.prototype.clearPasswordResetToken = async function () {
+    this.reset_password_token = null;
+    this.reset_password_expires = null;
+
+    await this.save({ 
+        fields: ['reset_password_token', 'reset_password_expires'] 
+    });
 };
 
 // Static methods

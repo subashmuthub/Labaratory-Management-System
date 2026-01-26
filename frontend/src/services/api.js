@@ -1,5 +1,5 @@
 // src/services/api.js - UPDATED VERSION
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 const apiCall = async (endpoint, options = {}) => {
     try {
@@ -82,8 +82,12 @@ export const usersAPI = {
         return Array.isArray(response) ? response : response.data || response;
     },
 
-    // Get user statistics
-    getStats: () => apiCall('/users/stats'),
+    // Get user statistics - Fixed to handle nested data structure
+    getStats: async () => {
+        const response = await apiCall('/users/stats');
+        // Backend returns { success: true, data: { total, active, students, ... } }
+        return response.data || response;
+    },
 
     // Get user by ID
     getById: (id) => apiCall(`/users/${id}`),

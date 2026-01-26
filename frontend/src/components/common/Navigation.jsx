@@ -17,7 +17,7 @@ export const getNavigationItems = (user, stats = {}) => {
             ),
             path: '/dashboard',
             show: true,
-            badge: stats.totalLabs > 0 ? stats.totalLabs : null
+            badge: null
         },
         {
             id: 'lab-management',
@@ -29,7 +29,7 @@ export const getNavigationItems = (user, stats = {}) => {
             ),
             path: '/lab-management',
             show: true,
-            badge: stats.totalLabs > 0 ? stats.totalLabs : null
+            badge: stats.totalLabs || null
         },
         {
             id: 'equipment',
@@ -41,7 +41,7 @@ export const getNavigationItems = (user, stats = {}) => {
             ),
             path: '/equipment',
             show: true,
-            badge: stats.totalEquipment > 0 ? stats.totalEquipment : null
+            badge: stats.totalEquipment || null
         },
         {
             id: 'bookings',
@@ -53,7 +53,7 @@ export const getNavigationItems = (user, stats = {}) => {
             ),
             path: '/bookings',
             show: true,
-            badge: stats.activeBookings > 0 ? stats.activeBookings : null
+            badge: stats.activeBookings || null
         },
         {
             id: 'calendar',
@@ -77,7 +77,7 @@ export const getNavigationItems = (user, stats = {}) => {
             ),
             path: '/training',
             show: true,
-            badge: null
+            badge: stats.completedTrainings || null
         },
         {
             id: 'incidents',
@@ -89,7 +89,8 @@ export const getNavigationItems = (user, stats = {}) => {
             ),
             path: '/incidents',
             show: true,
-            badge: null
+            badge: stats.totalIncidents || null,
+            badgeColor: stats.totalIncidents > 0 ? 'bg-red-100 text-red-800' : null
         },
         {
             id: 'orders',
@@ -101,7 +102,8 @@ export const getNavigationItems = (user, stats = {}) => {
             ),
             path: '/orders',
             show: user?.role === 'admin',
-            badge: null
+            badge: stats.pendingOrders || null,
+            badgeColor: stats.pendingOrders > 0 ? 'bg-orange-100 text-orange-800' : null
         },
         {
             id: 'users',
@@ -113,7 +115,7 @@ export const getNavigationItems = (user, stats = {}) => {
             ),
             path: '/users',
             show: user?.role === 'admin',
-            badge: null
+            badge: stats.totalUsers || null
         },
         {
             id: 'reports',
@@ -138,7 +140,21 @@ export const getNavigationItems = (user, stats = {}) => {
             ),
             path: '/maintenance',
             show: user?.role === 'admin' || user?.role === 'lab_technician',
-            badge: null
+            badge: stats.pendingMaintenances || null,
+            badgeColor: stats.pendingMaintenances > 0 ? 'bg-yellow-100 text-yellow-800' : null
+        },
+        {
+            id: 'notifications',
+            title: 'Notifications',
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                </svg>
+            ),
+            path: '/notifications',
+            show: true,
+            badge: stats.unreadNotifications || null,
+            badgeColor: stats.unreadNotifications > 0 ? 'bg-blue-500 text-white' : null
         }
     ]
 }

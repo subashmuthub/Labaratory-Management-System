@@ -8,10 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview",
-    "build:prod": "NODE_ENV=production vite build",
-    "docker:build": "docker build -t labms-frontend .",
-    "docker:run": "docker run -p 80:80 labms-frontend"
+    "preview": "vite preview"
   },
   "dependencies": {
     "axios": "^1.11.0",

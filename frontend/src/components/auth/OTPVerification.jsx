@@ -192,6 +192,14 @@ function OTPVerification({
             <div className="text-center text-xs text-gray-500 space-y-1">
                 <p>Check your Gmail inbox and spam folder</p>
                 <p>The code will expire in 10 minutes</p>
+                {error && error.includes('service') && (
+                    <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-yellow-700 text-sm">
+                            ⚠️ If you're not receiving emails, the email service may be temporarily unavailable. 
+                            Please try again later or contact support.
+                        </p>
+                    </div>
+                )}
             </div>
         </div>
     )

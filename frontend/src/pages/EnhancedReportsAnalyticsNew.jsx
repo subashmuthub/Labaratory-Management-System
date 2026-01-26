@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import * as XLSX from 'xlsx'
+import { Sidebar, AppHeader, getNavigationItems } from '../components/common/Navigation'
 
 const API_BASE_URL = '/api'
 
@@ -19,6 +20,19 @@ export default function EnhancedReportsAnalyticsNew() {
     
     // Sidebar state
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+    
+    // Stats for navigation badges
+    const [stats, setStats] = useState({
+        totalLabs: 0,
+        totalEquipment: 0,
+        activeBookings: 0,
+        totalIncidents: 0,
+        pendingOrders: 0,
+        totalUsers: 0,
+        completedTrainings: 0,
+        pendingMaintenances: 0,
+        unreadNotifications: 0
+    })
     
     // Report configuration state
     const [selectedReportType, setSelectedReportType] = useState('lab_management')
@@ -81,166 +95,6 @@ export default function EnhancedReportsAnalyticsNew() {
         { value: 'network', label: 'Network Equipment', icon: '🌐' }
     ]
 
-    // Navigation items (complete list matching Dashboard)
-    const navigationItems = [
-        {
-            id: 'dashboard',
-            title: 'Dashboard',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v3H8V5z"></path>
-                </svg>
-            ),
-            path: '/dashboard',
-            show: true,
-            badge: null
-        },
-        {
-            id: 'lab-management',
-            title: 'Lab Management',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                </svg>
-            ),
-            path: '/lab-management',
-            show: true,
-            badge: labs.length > 0 ? labs.length : null
-        },
-        {
-            id: 'equipment',
-            title: 'Equipment',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                </svg>
-            ),
-            path: '/equipment',
-            show: true,
-            badge: equipment.length > 0 ? equipment.length : null
-        },
-        {
-            id: 'bookings',
-            title: 'Bookings',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-            ),
-            path: '/bookings',
-            show: true,
-            badge: null
-        },
-        {
-            id: 'calendar',
-            title: 'Calendar',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-            ),
-            path: '/calendar',
-            show: true,
-            badge: null
-        },
-        {
-            id: 'training',
-            title: 'Training',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                </svg>
-            ),
-            path: '/training',
-            show: true,
-            badge: 0
-        },
-        {
-            id: 'incidents',
-            title: 'Incidents',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.982 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                </svg>
-            ),
-            path: '/incidents',
-            show: true,
-            badge: 1,
-            badgeColor: 'bg-red-500 text-white'
-        },
-        {
-            id: 'orders',
-            title: 'Orders',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
-                </svg>
-            ),
-            path: '/orders',
-            show: user?.role === 'admin',
-            badge: null
-        },
-        {
-            id: 'users',
-            title: 'Users',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                </svg>
-            ),
-            path: '/users',
-            show: user?.role === 'admin',
-            badge: 0
-        },
-        {
-            id: 'reports',
-            title: 'Reports',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                </svg>
-            ),
-            path: '/reports',
-            show: user?.role === 'admin' || user?.role === 'teacher' || user?.role === 'lab_assistant',
-            badge: null
-        },
-        {
-            id: 'maintenance',
-            title: 'Maintenance',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                </svg>
-            ),
-            path: '/maintenance',
-            show: user?.role === 'admin' || user?.role === 'lab_technician',
-            badge: null
-        },
-        {
-            id: 'notifications',
-            title: 'Notifications',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-                </svg>
-            ),
-            path: '/notifications',
-            show: true,
-            badge: null
-        }
-    ]
-
-    // Handle navigation
-    const handleNavigation = (path) => {
-        try {
-            navigate(path)
-        } catch (error) {
-            console.error(`Failed to navigate to ${path}:`, error)
-        }
-    }
-
     // Fetch initial data
     const fetchInitialData = useCallback(async () => {
         try {
@@ -300,8 +154,73 @@ export default function EnhancedReportsAnalyticsNew() {
         
         if (token) {
             fetchInitialData()
+            fetchStats()
         }
     }, [token, fetchInitialData])
+
+    // Fetch stats for navigation badges
+    const fetchStats = async () => {
+        try {
+            const headers = { 'Authorization': `Bearer ${token}` }
+            
+            const [labsRes, equipmentRes, bookingsRes, incidentsRes, ordersRes, usersRes, trainingRes, maintenanceRes] = await Promise.allSettled([
+                fetch(`${API_BASE_URL}/labs/stats`, { headers }),
+                fetch(`${API_BASE_URL}/equipment/stats`, { headers }),
+                fetch(`${API_BASE_URL}/bookings/stats`, { headers }),
+                fetch(`${API_BASE_URL}/incidents/stats`, { headers }),
+                fetch(`${API_BASE_URL}/orders/stats`, { headers }),
+                fetch(`${API_BASE_URL}/users/stats`, { headers }),
+                fetch(`${API_BASE_URL}/training/stats`, { headers }),
+                fetch(`${API_BASE_URL}/maintenance/stats`, { headers })
+            ])
+
+            const newStats = { ...stats }
+            
+            if (labsRes.status === 'fulfilled' && labsRes.value.ok) {
+                const data = await labsRes.value.json()
+                newStats.totalLabs = data.data?.total || 0
+            }
+            
+            if (equipmentRes.status === 'fulfilled' && equipmentRes.value.ok) {
+                const data = await equipmentRes.value.json()
+                newStats.totalEquipment = data.data?.total || 0
+            }
+            
+            if (bookingsRes.status === 'fulfilled' && bookingsRes.value.ok) {
+                const data = await bookingsRes.value.json()
+                newStats.activeBookings = data.data?.active || 0
+            }
+            
+            if (incidentsRes.status === 'fulfilled' && incidentsRes.value.ok) {
+                const data = await incidentsRes.value.json()
+                newStats.totalIncidents = data.data?.open || 0
+            }
+            
+            if (ordersRes.status === 'fulfilled' && ordersRes.value.ok) {
+                const data = await ordersRes.value.json()
+                newStats.pendingOrders = data.data?.pending || 0
+            }
+            
+            if (usersRes.status === 'fulfilled' && usersRes.value.ok) {
+                const data = await usersRes.value.json()
+                newStats.totalUsers = data.data?.total || 0
+            }
+            
+            if (trainingRes.status === 'fulfilled' && trainingRes.value.ok) {
+                const data = await trainingRes.value.json()
+                newStats.completedTrainings = data.data?.completed || 0
+            }
+            
+            if (maintenanceRes.status === 'fulfilled' && maintenanceRes.value.ok) {
+                const data = await maintenanceRes.value.json()
+                newStats.pendingMaintenances = data.data?.pending || 0
+            }
+            
+            setStats(newStats)
+        } catch (error) {
+            console.error('Error fetching stats:', error)
+        }
+    }
 
     // Generate comprehensive real report data based on selected type
     const generateRealData = async () => {
@@ -680,102 +599,12 @@ export default function EnhancedReportsAnalyticsNew() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Sidebar */}
-            <div className={`fixed inset-y-0 left-0 z-50 ${sidebarCollapsed ? 'w-16' : 'w-64'} bg-white shadow-lg border-r border-gray-200 transition-all duration-300`}>
-                {/* Sidebar Header */}
-                <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200">
-                    {!sidebarCollapsed && (
-                        <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 rounded-lg overflow-hidden">
-                                <img 
-                                    src="/nec-logo.png" 
-                                    alt="NEC Logo" 
-                                    className="w-full h-full object-contain"
-                                />
-                            </div>
-                            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                                NEC LabMS
-                            </h1>
-                        </div>
-                    )}
-                    <button
-                        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                        className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                    >
-                        <svg className={`w-5 h-5 text-gray-600 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
-                        </svg>
-                    </button>
-                </div>
-
-                {/* Navigation Items */}
-                <nav className="mt-6 px-3">
-                    <div className="space-y-1">
-                        {navigationItems.filter(item => item.show).map((item) => {
-                            const isActive = location.pathname === item.path
-                            return (
-                                <button
-                                    key={item.id}
-                                    onClick={() => handleNavigation(item.path)}
-                                    className={`w-full flex items-center justify-between px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
-                                        isActive
-                                            ? 'bg-blue-50 text-blue-700 border-r-4 border-blue-700'
-                                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                                    }`}
-                                    title={sidebarCollapsed ? item.title : ''}
-                                >
-                                    <div className="flex items-center">
-                                        <div className="flex items-center justify-center w-5 h-5">
-                                            {item.icon}
-                                        </div>
-                                        {!sidebarCollapsed && (
-                                            <span className="ml-3 flex-1 text-left">{item.title}</span>
-                                        )}
-                                    </div>
-                                    {!sidebarCollapsed && item.badge !== null && (
-                                        <span className={`px-2 py-1 text-xs rounded-full ${
-                                            item.badgeColor || 'bg-gray-200 text-gray-800'
-                                        }`}>
-                                            {item.badge}
-                                        </span>
-                                    )}
-                                </button>
-                            )
-                        })}
-                    </div>
-                </nav>
-
-                {/* User Profile Section */}
-                {!sidebarCollapsed && (
-                    <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
-                        <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden">
-                                {user?.avatar_url ? (
-                                    <img
-                                        src={user.avatar_url}
-                                        alt="Profile"
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-                                        <span className="text-white font-semibold text-sm">
-                                            {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">
-                                    {user?.name || 'Unknown User'}
-                                </p>
-                                <p className="text-xs text-gray-500 truncate">
-                                    {user?.role?.replace('_', ' ') || 'No Role'} • {user?.email || 'No Email'}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
+            <Sidebar
+                sidebarCollapsed={sidebarCollapsed}
+                setSidebarCollapsed={setSidebarCollapsed}
+                currentPath={location.pathname}
+                stats={stats}
+            />
 
             {/* Main Content */}
             <div className={`${sidebarCollapsed ? 'ml-16' : 'ml-64'} transition-all duration-300 min-h-screen`}>

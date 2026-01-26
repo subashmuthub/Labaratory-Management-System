@@ -324,8 +324,8 @@ export default function Incidents() {
                 const result = await response.json()
                 console.log('✅ Equipment response:', result)
                 
-                // ✅ FIXED: Ensure equipment is always an array
-                const equipmentData = result.data || result || []
+                // ✅ FIXED: Handle nested data structure - equipment is in result.data.equipment
+                const equipmentData = result.data?.equipment || result.data || result || []
                 const safeEquipment = Array.isArray(equipmentData) ? equipmentData : []
                 
                 setEquipment(safeEquipment)
@@ -355,8 +355,8 @@ export default function Incidents() {
                 const result = await response.json()
                 console.log('✅ Users response:', result)
                 
-                // ✅ FIXED: Ensure users is always an array
-                const usersData = result.data || result || []
+                // ✅ FIXED: Users API returns array directly, not wrapped in data object
+                const usersData = Array.isArray(result) ? result : (result.data?.users || result.data || [])
                 const safeUsers = Array.isArray(usersData) ? usersData : []
                 
                 setUsers(safeUsers)

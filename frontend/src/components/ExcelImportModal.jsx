@@ -185,16 +185,25 @@ const ExcelImportModal = ({ isOpen, onClose, onImportComplete, labs, token }) =>
             if (row['S.No'] && row['Equipments'] && row['Make']) {
                 // Parse cost (handle Indian number format with commas)
                 let cost = 0
+                let quantity = row['Qty'] || 1
                 if (row['Cost in Rs']) {
-                    // Extract the main cost amount (first number sequence before parentheses)
-                    // Handle formats like "12,87,475 (25*51,499)" or "63,998 (2*31,999)"
-                    const costStr = String(row['Cost in Rs'])
-                    const match = costStr.match(/^([0-9,]+)/)
-                    if (match) {
-                        const numericPart = match[1].replace(/,/g, '')
-                        cost = parseFloat(numericPart) || 0
+                    try {
+                        // Extract the main cost amount (first number sequence before parentheses)
+                        // Handle formats like "12,87,475 (25*51,499)" or "63,998 (2*31,999)"
+                        const costStr = String(row['Cost in Rs'])
+                        const match = costStr.match(/^([0-9,]+)/)
+                        if (match) {
+                            const numericPart = match[1].replace(/,/g, '')
+                            cost = parseFloat(numericPart) || 0
+                        }
+                    } catch (error) {
+                        console.warn('Error parsing cost:', row['Cost in Rs'], error)
+                        cost = 0
                     }
                 }
+
+                // Ensure quantity is at least 1
+                quantity = Math.max(1, parseInt(quantity) || 1)
 
                 // Parse date (DD.MM.YYYY format)
                 let purchaseDate = null
@@ -223,7 +232,8 @@ const ExcelImportModal = ({ isOpen, onClose, onImportComplete, labs, token }) =>
                 }
 
                 // Generate serial number if not provided
-                const serialNumber = `${String(row['Make']).toUpperCase()}-${String(row['S.No']).padStart(3, '0')}-${new Date().getFullYear()}`
+                const timestamp = new Date().getTime().toString().slice(-4)
+                const serialNumber = `${String(row['Make']).toUpperCase()}-${String(row['S.No']).padStart(3, '0')}-${new Date().getFullYear()}-${timestamp}`
 
                 return {
                     name: row['Equipments'] && row['Make'] ? `${row['Equipments']} ${row['Make']}` : 'Unknown Equipment',
@@ -232,16 +242,16 @@ const ExcelImportModal = ({ isOpen, onClose, onImportComplete, labs, token }) =>
                     model: row['System Description'] || '',
                     manufacturer: row['Make'] || '',
                     category: category,
-                    lab_id: labs && labs.length > 0 ? labs[0].id : 8, // Use first available lab
+                    lab_id: labs && labs.length > 0 ? labs[0].id : 1, // Use first available lab or default to 1
                     location_details: '',
                     status: 'available',
                     condition_status: 'good',
-                    purchase_price: Math.floor(cost / (row['Qty'] || 1)), // Divide total cost by quantity
-                    current_value: Math.floor((cost / (row['Qty'] || 1)) * 0.8), // Estimate 80% of per-unit price
+                    purchase_price: Math.floor(cost / quantity), // Divide total cost by quantity
+                    current_value: Math.floor((cost / quantity) * 0.8), // Estimate 80% of per-unit price
                     purchase_date: purchaseDate,
                     warranty_expiry: null,
-                    quantity: row['Qty'] || 1,
-                    stock_register_page: row['Stock Register Page No'] || ''
+                    quantity: quantity,
+                    stock_register_page: row['Stock Register Page No'] ? String(row['Stock Register Page No']) : ''
                 }
             } else {
                 // Original format - return as is but ensure required fields
@@ -300,23 +310,29 @@ const ExcelImportModal = ({ isOpen, onClose, onImportComplete, labs, token }) =>
             if (!row.description) warnings.push('Description not provided')
 
             // Validate status values
-            const validStatuses = ['available', 'in_use', 'maintenance', 'retired']
+            const validStatuses = ['available', 'in_use', 'maintenance', 'broken', 'retired']
             if (row.status && !validStatuses.includes(row.status)) {
                 errors.push(`Invalid status: ${row.status}. Must be one of: ${validStatuses.join(', ')}`)
             }
 
             // Validate condition status
-            const validConditions = ['excellent', 'good', 'fair', 'poor', 'damaged']
+            const validConditions = ['excellent', 'good', 'fair', 'poor']
             if (row.condition_status && !validConditions.includes(row.condition_status)) {
                 errors.push(`Invalid condition: ${row.condition_status}. Must be one of: ${validConditions.join(', ')}`)
             }
 
             // Validate dates
-            if (row.purchase_date && row.purchase_date !== null && isNaN(new Date(row.purchase_date))) {
-                errors.push('Invalid purchase date format')
+            if (row.purchase_date && row.purchase_date !== null) {
+                const date = new Date(row.purchase_date)
+                if (isNaN(date.getTime())) {
+                    warnings.push('Invalid purchase date format - will use current date')
+                }
             }
-            if (row.warranty_expiry && isNaN(new Date(row.warranty_expiry))) {
-                errors.push('Invalid warranty expiry date format')
+            if (row.warranty_expiry && row.warranty_expiry !== null) {
+                const date = new Date(row.warranty_expiry)
+                if (isNaN(date.getTime())) {
+                    warnings.push('Invalid warranty expiry date format')
+                }
             }
 
             // Validate purchase price
@@ -363,8 +379,14 @@ const ExcelImportModal = ({ isOpen, onClose, onImportComplete, labs, token }) =>
 
             setUploadProgress(25)
 
+            console.log('Sending equipment data:', {
+                count: equipmentData.length,
+                sample: equipmentData[0],
+                url: `${apiConfig.baseURL}/equipment/bulk-import`
+            })
+
             // Call bulk import endpoint
-            const response = await fetch(`${apiConfig.baseURL}/api/equipment/bulk-import`, {
+            const response = await fetch(`${apiConfig.baseURL}/equipment/bulk-import`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -376,6 +398,9 @@ const ExcelImportModal = ({ isOpen, onClose, onImportComplete, labs, token }) =>
             setUploadProgress(75)
 
             const result = await response.json()
+            console.log('Import response:', result)
+            console.log('Response status:', response.status)
+            console.log('Response OK:', response.ok)
 
             setUploadProgress(100)
 
@@ -384,14 +409,21 @@ const ExcelImportModal = ({ isOpen, onClose, onImportComplete, labs, token }) =>
                 if (result.data.failed > 0) {
                     setError(`${result.data.failed} items failed to import:\n${result.data.errors.join('\n')}`)
                 }
-                onImportComplete()
+                
+                // Wait a moment before closing to show success message
+                setTimeout(() => {
+                    onImportComplete()
+                }, 1500)
             } else {
-                setError(result.message || 'Import failed. Please try again.')
+                const errorMsg = result.message || 'Import failed. Please try again.'
+                const detailedErrors = result.data?.errors ? `\n\nDetails:\n${result.data.errors.slice(0, 5).join('\n')}` : ''
+                setError(errorMsg + detailedErrors)
+                console.error('Import failed:', result)
             }
 
         } catch (error) {
             console.error('Import error:', error)
-            setError('Import failed. Please try again.')
+            setError(`Import failed: ${error.message || 'Please try again.'}`)
         } finally {
             setIsUploading(false)
         }

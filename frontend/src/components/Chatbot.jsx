@@ -7,7 +7,6 @@ export default function IntelligentChatbot() {
     const [messages, setMessages] = useState([]);
     const [inputMessage, setInputMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
-    const [suggestions, setSuggestions] = useState([]);
     const [isListening, setIsListening] = useState(false);
     const [showQuickActions, setShowQuickActions] = useState(false);
     const [chatHistory, setChatHistory] = useState([]);
@@ -18,22 +17,6 @@ export default function IntelligentChatbot() {
     const { user, token } = useAuth();
 
     const API_BASE_URL = '/api';
-
-    // Enhanced quick questions with more variety
-    const quickQuestions = [
-        "How many labs do I have?",
-        "What equipment is available now?",
-        "Show me all computers with i7 processor",
-        "Find equipment with SSD storage",
-        "List all microscopes in Lab A",
-        "Check server status",
-        "Who has booked Lab 1 today?",
-        "Show maintenance schedule",
-        "Find broken equipment",
-        "List all users in system",
-        "What's the most used equipment?",
-        "Show recent activities"
-    ];
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -54,13 +37,13 @@ export default function IntelligentChatbot() {
     const initializeChat = () => {
         const welcomeMessage = {
             id: Date.now(),
-            text: `Hello ${user?.name || 'there'}! 🤖\n\nI'm your enhanced lab assistant with voice recognition and smart features!\n\n**Enhanced Features:**\n🎤 **Voice Commands**: Click the microphone to speak\n🔢 **Live Counts**: "How many labs/computers do I have?"\n🔍 **Smart Search**: "Find all i7 computers", "Show SSD equipment"\n📊 **Real Status**: "Is computer001 available?"\n📍 **Locations**: "Where is [equipment name]?"\n🔧 **Specifications**: "What are the specs of [equipment]?"\n⚡ **Quick Actions**: Use buttons for common tasks\n\n**Try voice commands or click quick actions below!**`,
+            text: user ? `Hello ${user?.name || 'there'}! 🤖\n\nI'm your intelligent lab assistant powered by AI! I can help you with both lab data and general questions.\n\n**What I can do:**\n🎤 **Voice Commands**: Click the microphone to speak\n📊 **Lab Data**: \"How many labs?\", \"Show equipment\", \"Find i7 computers\"\n🔍 **Equipment Info**: \"Where is computer001?\", \"What are the specs?\"\n🤖 **AI Assistance**: Lab safety, maintenance tips, study advice\n💡 **Smart Responses**: I understand both data queries and general questions\n⚡ **Quick Actions**: Use buttons for common tasks\n\n**Try asking me anything - data queries or general questions!**` 
+            : `Welcome to NEC Lab Management System! 🤖\n\nTo use the chatbot features, please log in first.\n\nOnce logged in, I can help you with:\n📊 Lab data and equipment information\n🤖 AI-powered assistance and advice\n🎤 Voice commands\n💡 Smart responses to your questions\n\n**Please log in to get started!**`,
             isBot: true,
             timestamp: new Date(),
             isWelcome: true
         };
         setMessages([welcomeMessage]);
-        setSuggestions(quickQuestions.slice(0, 3));
     };
 
     // Voice recognition functionality
@@ -125,6 +108,21 @@ export default function IntelligentChatbot() {
         setIsTyping(true);
 
         try {
+            // Check if user is authenticated
+            if (!token || !user) {
+                const errorMessage = {
+                    id: Date.now() + 1,
+                    text: "Please log in to use the chatbot features. 🔐",
+                    isBot: true,
+                    timestamp: new Date(),
+                    isError: true
+                };
+                setMessages(prev => [...prev, errorMessage]);
+                setIsTyping(false);
+                return;
+            }
+
+            // Always use the main chat endpoint
             const response = await fetch(`${API_BASE_URL}/chatbot/chat`, {
                 method: 'POST',
                 headers: {
@@ -148,22 +146,32 @@ export default function IntelligentChatbot() {
                     text: result.data.response,
                     isBot: true,
                     timestamp: new Date(),
-                    queryType: result.data.queryType,
+                    queryType: result.data.queryType || result.data.intent,
                     entities: result.data.entities,
-                    specificItem: result.data.specificItem
+                    specificItem: result.data.specificItem,
+                    source: result.data.source || 'database'
                 };
 
                 setMessages(prev => [...prev, botMessage]);
-                setSuggestions(result.data.suggestions || []);
             } else {
                 throw new Error(result.message);
             }
 
         } catch (error) {
             console.error('Error:', error);
+            let errorText = "I'm having trouble right now. Please try again.";
+            
+            if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+                errorText = "Please log in to use the chatbot features. 🔐";
+            } else if (error.message.includes('Network')) {
+                errorText = "Network connection issue. Please check your internet connection.";
+            } else if (error.message.includes('500')) {
+                errorText = "Server is experiencing issues. Please try again later.";
+            }
+            
             const errorMessage = {
                 id: Date.now() + 1,
-                text: "I'm having trouble accessing the database right now. Please check your connection and try again.",
+                text: errorText,
                 isBot: true,
                 timestamp: new Date(),
                 isError: true
@@ -183,7 +191,6 @@ export default function IntelligentChatbot() {
 
     const clearChat = () => {
         setMessages([]);
-        setSuggestions([]);
         setTimeout(initializeChat, 100);
     };
 
@@ -319,9 +326,9 @@ export default function IntelligentChatbot() {
                                     </p>
 
                                     {/* Show query info for debugging */}
-                                    {message.queryType && message.queryType !== 'general' && (
+                                    {message.queryType && message.queryType !== 'general' && message.queryType !== 'ai_chat' && (
                                         <div className="mt-2 text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">
-                                            Query: {message.queryType}
+                                            📊 Query: {message.queryType}
                                             {message.specificItem && ` | Item: ${message.specificItem}`}
                                         </div>
                                     )}
@@ -354,25 +361,6 @@ export default function IntelligentChatbot() {
                         <div ref={messagesEndRef} />
                     </div>
 
-                    {/* Suggestions */}
-                    {suggestions.length > 0 && !isTyping && (
-                        <div className="px-4 py-2 border-t border-gray-100 bg-gray-50">
-                            <p className="text-xs text-gray-600 mb-2 font-medium">🎯 Try asking:</p>
-                            <div className="space-y-1">
-                                {suggestions.slice(0, 3).map((suggestion, index) => (
-                                    <button
-                                        key={index}
-                                        onClick={() => handleSendMessage(suggestion)}
-                                        className="w-full text-left text-xs bg-white hover:bg-green-50 text-green-700 px-3 py-2 rounded-lg border border-green-200 transition-colors"
-                                        disabled={isTyping}
-                                    >
-                                        {suggestion}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
                     {/* Enhanced Quick Actions Panel */}
                     {showQuickActions && !isTyping && (
                         <div className="px-4 py-3 border-t border-gray-100 bg-gradient-to-r from-purple-50 to-blue-50">
@@ -397,25 +385,6 @@ export default function IntelligentChatbot() {
                                     >
                                         <span className="text-lg">{action.icon}</span>
                                         <span className="text-xs font-medium">{action.text}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Quick Questions for first time */}
-                    {messages.length <= 1 && !isTyping && !showQuickActions && (
-                        <div className="px-4 py-3 border-t border-gray-100">
-                            <p className="text-xs text-gray-600 mb-3 font-medium">💡 Quick questions:</p>
-                            <div className="space-y-2">
-                                {quickQuestions.slice(0, 3).map((question, index) => (
-                                    <button
-                                        key={index}
-                                        onClick={() => handleSendMessage(question)}
-                                        className="w-full text-left text-xs bg-gradient-to-r from-green-100 to-blue-100 hover:from-green-200 hover:to-blue-200 text-gray-700 px-3 py-2 rounded-lg transition-colors"
-                                        disabled={isTyping}
-                                    >
-                                        {question}
                                     </button>
                                 ))}
                             </div>

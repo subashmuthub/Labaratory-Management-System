@@ -29,14 +29,57 @@ router.get('/debug-get-otp', (req, res) => {
     return res.json({ success: true, data: stored });
 });
 
-// Gmail transporter configuration
-const gmailTransporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD
+// Gmail transporter configuration with improved error handling
+const createGmailTransporter = () => {
+    try {
+        // Check if Gmail credentials are configured
+        if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+            console.warn('⚠️ Gmail credentials not configured. Email functionality will not work.');
+            return null;
+        }
+
+        // Validate Gmail credentials format
+        if (!process.env.GMAIL_USER.includes('@gmail.com')) {
+            console.warn('⚠️ GMAIL_USER should be a valid Gmail address.');
+            return null;
+        }
+
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            host: 'smtp.gmail.com',
+            port: 587,
+            secure: false,
+            auth: {
+                user: process.env.GMAIL_USER,
+                pass: process.env.GMAIL_APP_PASSWORD
+            },
+            tls: {
+                rejectUnauthorized: false
+            }
+        });
+
+        // Verify the transporter configuration
+        transporter.verify((error, success) => {
+            if (error) {
+                console.error('❌ Gmail transporter verification failed:', error.message);
+                console.log('💡 Please check your Gmail credentials:');
+                console.log('   1. Ensure GMAIL_USER is a valid Gmail address');
+                console.log('   2. Ensure GMAIL_APP_PASSWORD is a valid app password (not regular password)');
+                console.log('   3. Enable 2-step verification in your Google account');
+                console.log('   4. Generate an app password: https://myaccount.google.com/apppasswords');
+            } else {
+                console.log('✅ Gmail transporter is ready to send emails');
+            }
+        });
+
+        return transporter;
+    } catch (error) {
+        console.error('❌ Failed to create Gmail transporter:', error.message);
+        return null;
     }
-});
+};
+
+const gmailTransporter = createGmailTransporter();
 
 // Helper function to validate ANY Gmail address (any domain with Gmail)
 const isValidEmail = (email) => {
@@ -59,59 +102,19 @@ const generateOTP = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Helper function to send OTP email via Gmail SMTP
+// Helper function to send OTP email using the working emailService
 const sendOTPEmail = async (email, otp) => {
-    const mailOptions = {
-        from: process.env.GMAIL_USER,
-        to: email,
-        subject: 'NEC LabMS - Email Verification Code',
-        html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-                <div style="text-align: center; margin-bottom: 30px;">
-                    <h1 style="color: #3B82F6; margin: 0;">NEC LabMS</h1>
-                    <p style="color: #6B7280; margin: 5px 0;">Laboratory Management System</p>
-                </div>
-                
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px;">
-                    <h2 style="margin: 0 0 10px 0; font-size: 24px;">Email Verification</h2>
-                    <p style="margin: 0; opacity: 0.9;">Your verification code is ready</p>
-                </div>
-                
-                <div style="text-align: center; margin: 30px 0;">
-                    <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
-                        Enter this verification code to complete your account setup:
-                    </p>
-                    <div style="background: #F3F4F6; border: 2px dashed #9CA3AF; padding: 20px; border-radius: 10px; display: inline-block; margin: 20px 0;">
-                        <span style="font-size: 32px; font-weight: bold; color: #1F2937; letter-spacing: 5px; font-family: 'Courier New', monospace;">
-                            ${otp}
-                        </span>
-                    </div>
-                    <p style="font-size: 14px; color: #6B7280; margin-top: 15px;">
-                        This code expires in 10 minutes
-                    </p>
-                </div>
-                
-                <div style="background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; padding: 15px; margin: 20px 0;">
-                    <p style="margin: 0; font-size: 14px; color: #92400E;">
-                        🔒 <strong>Security Note:</strong> Never share this code with anyone. NEC LabMS will never ask for your verification code via phone or email.
-                    </p>
-                </div>
-                
-                <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #E5E7EB;">
-                    <p style="font-size: 12px; color: #9CA3AF; margin: 5px 0;">
-                        This email was sent from NEC Laboratory Management System
-                    </p>
-                    <p style="font-size: 12px; color: #9CA3AF; margin: 5px 0;">
-                        National Engineering College, K.R.Nagar, Kovilpatti - 628503
-                    </p>
-                </div>
-            </div>
-        `
-    };
-
-    await gmailTransporter.sendMail(mailOptions);
-    console.log(`✅ OTP email sent successfully to ${email}`);
-    return true;
+    try {
+        const emailService = require('../services/emailService');
+        console.log(`📧 Attempting to send OTP email to: ${email} using emailService`);
+        
+        const result = await emailService.sendOTP(email, otp, 'registration');
+        console.log(`✅ OTP email sent successfully to ${email}. Message ID: ${result.messageId}`);
+        return true;
+    } catch (error) {
+        console.error(`❌ Failed to send OTP email to ${email}:`, error.message);
+        throw new Error(`Failed to send email: ${error.message}`);
+    }
 };
 
 // Enhanced validation
@@ -119,14 +122,12 @@ const gmailValidation = [
     body('email')
         .isEmail()
         .withMessage('Please enter a valid email address')
-        .normalizeEmail()
 ];
 
 const loginEmailValidation = [
     body('email')
         .isEmail()
-        .withMessage('Please enter a valid email address')
-        .normalizeEmail(),
+        .withMessage('Please enter a valid email address'),
     body('password')
         .notEmpty()
         .withMessage('Password is required')
@@ -139,13 +140,12 @@ const registerValidation = [
         .withMessage('Name must be between 2 and 100 characters'),
     body('email')
         .isEmail()
-        .withMessage('Please enter a valid email address')
-        .normalizeEmail(),
+        .withMessage('Please enter a valid email address'),
     body('password')
         .isLength({ min: 6 })
         .withMessage('Password must be at least 6 characters'),
     body('role')
-        .isIn(['student', 'teacher', 'lab_assistant', 'lab_technician', 'admin'])
+        .isIn(['student', 'faculty', 'teacher', 'lab_assistant', 'lab_technician', 'admin'])
         .withMessage('Invalid role')
 ];
 
@@ -160,6 +160,41 @@ const generateToken = (user) => {
         { expiresIn: '24h' }
     );
 };
+
+// @route   GET /api/auth/test-email
+// @desc    Test Gmail configuration (admin only)
+router.get('/test-email', async (req, res) => {
+    try {
+        if (!gmailTransporter) {
+            return res.status(503).json({
+                success: false,
+                message: 'Gmail is not configured',
+                details: {
+                    gmailUser: process.env.GMAIL_USER ? 'Set' : 'Not set',
+                    gmailPassword: process.env.GMAIL_APP_PASSWORD ? 'Set' : 'Not set'
+                }
+            });
+        }
+
+        // Test the transporter
+        await gmailTransporter.verify();
+        
+        res.json({
+            success: true,
+            message: 'Gmail configuration is working properly',
+            details: {
+                gmailUser: process.env.GMAIL_USER,
+                status: 'Connected'
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Gmail configuration test failed',
+            error: error.message
+        });
+    }
+});
 
 // @route   POST /api/auth/send-otp
 // @desc    Send OTP to Gmail for verification
@@ -177,33 +212,121 @@ router.post('/send-otp', gmailValidation, async (req, res) => {
             });
         }
 
+        // Check if Gmail is configured
+        if (!gmailTransporter) {
+            console.log('❌ Gmail not configured');
+            return res.status(503).json({
+                success: false,
+                message: 'Email service is temporarily unavailable. Please try again later or contact administrator.',
+                code: 'EMAIL_SERVICE_UNAVAILABLE'
+            });
+        }
+
         const { email } = req.body;
+        const normalizedEmail = email.toLowerCase().trim();
         const otp = generateOTP();
-        console.log('🔢 Generated OTP for', email, ':', otp);
+        console.log('🔢 Generated OTP for', normalizedEmail, ':', otp);
         const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
 
         // Store OTP (In production, use Redis or database)
-        otpStore.set(email.toLowerCase(), {
+        otpStore.set(normalizedEmail, {
             otp,
             expiresAt,
             attempts: 0
         });
 
-        // Send OTP email
-        await sendOTPEmail(email, otp);
-        console.log('✅ OTP sent successfully to:', email);
+        try {
+            // Send OTP email with enhanced error handling
+            await sendOTPEmail(email, otp);
+            console.log('✅ OTP sent successfully to:', email);
 
-        res.json({
-            success: true,
-            message: 'OTP sent successfully to your email. Please check your inbox.',
-            expiresIn: 600 // 10 minutes in seconds
-        });
+            res.json({
+                success: true,
+                message: 'OTP sent successfully to your email. Please check your inbox and spam folder.',
+                expiresIn: 600 // 10 minutes in seconds
+            });
+        } catch (emailError) {
+            // Remove the stored OTP if email sending fails
+            otpStore.delete(email.toLowerCase());
+            
+            console.error('❌ Email sending failed:', emailError.message);
+            
+            res.status(500).json({
+                success: false,
+                message: emailError.message || 'Failed to send OTP email. Please try again.',
+                code: 'EMAIL_SEND_FAILED'
+            });
+        }
 
     } catch (error) {
         console.error('💥 OTP send error:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to send OTP'
+            message: 'Failed to send OTP. Please try again.',
+            code: 'INTERNAL_ERROR'
+        });
+    }
+});
+
+// @route   POST /api/auth/resend-otp
+// @desc    Resend OTP for registration
+router.post('/resend-otp', gmailValidation, async (req, res) => {
+    try {
+        const { email } = req.body;
+        const emailLower = email.toLowerCase();
+
+        console.log('🔄 Resend OTP request for:', emailLower);
+
+        // Check if there's existing OTP data
+        const existingData = otpStore.get(emailLower);
+        if (!existingData) {
+            return res.status(400).json({
+                success: false,
+                message: 'No registration session found. Please start registration again.'
+            });
+        }
+
+        // Generate new OTP
+        const newOtp = generateOTP();
+        const expiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes
+
+        console.log(`🔐 Generated new OTP for ${emailLower}: ${newOtp} (expires in 10 minutes)`);
+
+        // Update stored data with new OTP
+        existingData.otp = newOtp;
+        existingData.expiresAt = expiresAt;
+        existingData.attempts = 0;
+        existingData.verified = false;
+
+        otpStore.set(emailLower, existingData);
+
+        // Send OTP email
+        try {
+            await sendOTPEmail(email, newOtp);
+            console.log(`✅ New OTP sent successfully to ${email}`);
+            
+            res.status(200).json({
+                success: true,
+                message: 'New verification code sent to your email.',
+                data: {
+                    email: email,
+                    expires_in: 10 * 60 // 10 minutes in seconds
+                }
+            });
+        } catch (emailError) {
+            console.error('❌ Failed to send new OTP email:', emailError.message);
+            
+            res.status(500).json({
+                success: false,
+                message: emailError.message || 'Failed to send new verification email'
+            });
+        }
+
+    } catch (error) {
+        console.error('❌ Resend OTP error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to resend OTP. Please try again.'
         });
     }
 });
@@ -212,8 +335,9 @@ router.post('/send-otp', gmailValidation, async (req, res) => {
 // @desc    Verify OTP for email verification
 router.post('/verify-otp', async (req, res) => {
     try {
-        const { email, otp } = req.body;
+        let { email, otp } = req.body;
 
+        // Input validation
         if (!email || !otp) {
             return res.status(400).json({
                 success: false,
@@ -221,60 +345,198 @@ router.post('/verify-otp', async (req, res) => {
             });
         }
 
-        const emailLower = email.toLowerCase();
-        const storedData = otpStore.get(emailLower);
+        // Normalize inputs
+        email = email.toString().trim().toLowerCase();
+        otp = otp.toString().trim();
 
-        if (!storedData) {
+        // Validate OTP format
+        if (!/^\d{6}$/.test(otp)) {
             return res.status(400).json({
                 success: false,
-                message: 'OTP not found or expired'
+                message: 'OTP must be exactly 6 digits'
+            });
+        }
+
+        // Get stored data
+        const storedData = otpStore.get(email);
+
+        console.log('🔍 OTP verification attempt:', {
+            email: email,
+            providedOTP: otp,
+            hasStoredData: !!storedData,
+            storedOTPKeys: Array.from(otpStore.keys()),
+            isExpired: storedData ? (Date.now() > storedData.expiresAt) : 'N/A'
+        });
+
+        if (!storedData) {
+            console.log('❌ No OTP data found for email:', email);
+            return res.status(400).json({
+                success: false,
+                message: 'OTP not found. Please request a new verification code.'
             });
         }
 
         // Check expiration
         if (Date.now() > storedData.expiresAt) {
-            otpStore.delete(emailLower);
+            otpStore.delete(email);
+            console.log('❌ OTP expired for:', email);
             return res.status(400).json({
                 success: false,
-                message: 'OTP has expired'
+                message: 'OTP has expired. Please request a new verification code.'
             });
         }
 
         // Check attempts
         if (storedData.attempts >= 3) {
-            otpStore.delete(emailLower);
+            otpStore.delete(email);
+            console.log('❌ Too many attempts for:', email);
             return res.status(400).json({
                 success: false,
-                message: 'Too many failed attempts'
+                message: 'Too many failed attempts. Please request a new verification code.'
             });
         }
 
-        // Verify OTP
-        if (storedData.otp !== otp.toString()) {
-            storedData.attempts++;
+        // Verify OTP with exact string comparison
+        const storedOTPStr = storedData.otp.toString().trim();
+        const providedOTPStr = otp.toString().trim();
+        
+        console.log('🔍 OTP comparison:', {
+            storedOTP: storedOTPStr,
+            providedOTP: providedOTPStr,
+            match: storedOTPStr === providedOTPStr,
+            lengths: { stored: storedOTPStr.length, provided: providedOTPStr.length }
+        });
+        
+        if (storedOTPStr !== providedOTPStr) {
+            storedData.attempts = (storedData.attempts || 0) + 1;
+            otpStore.set(email, storedData);
+            console.log(`❌ OTP mismatch for ${email}. Attempts: ${storedData.attempts}/3`);
             return res.status(400).json({
                 success: false,
-                message: 'Invalid OTP'
+                message: `Invalid OTP. ${3 - storedData.attempts} attempts remaining.`
             });
         }
 
         // OTP verified successfully
-        // Mark the OTP as verified so the subsequent registration call can consume it.
-        // Do NOT delete from the store here — consume (delete) only when the user completes registration.
         storedData.verified = true;
-        storedData.attempts = 0; // reset attempts on successful verification
-        otpStore.set(emailLower, storedData);
+        storedData.verifiedAt = Date.now();
+        storedData.attempts = 0;
+        otpStore.set(email, storedData);
+
+        console.log('✅ OTP verified successfully for:', email);
 
         res.json({
             success: true,
-            message: 'OTP verified successfully'
+            message: 'OTP verified successfully',
+            data: {
+                email: email,
+                verifiedAt: storedData.verifiedAt
+            }
         });
 
     } catch (error) {
         console.error('💥 OTP verification error:', error);
         res.status(500).json({
             success: false,
-            message: 'OTP verification failed'
+            message: 'Server error during OTP verification. Please try again.'
+        });
+    }
+});
+
+// @route   POST /api/auth/register
+// @desc    Initiate user registration and send OTP
+router.post('/register', registerValidation, async (req, res) => {
+    try {
+        console.log('📝 Registration initiation attempt:', {
+            name: req.body.name,
+            email: req.body.email,
+            role: req.body.role
+        });
+
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            console.log('❌ Validation errors:', errors.array());
+            return res.status(400).json({
+                success: false,
+                message: 'Validation failed',
+                errors: errors.array()
+            });
+        }
+
+        const { name, email, password, role } = req.body;
+        const emailLower = email.toLowerCase();
+
+        // Check if user already exists
+        const existingUser = await User.findOne({
+            where: { email: emailLower }
+        });
+
+        if (existingUser) {
+            console.log('❌ User already exists:', emailLower);
+            return res.status(400).json({
+                success: false,
+                message: 'User with this email already exists'
+            });
+        }
+
+        // Validate email format for registration (allow any valid email)
+        if (!isValidRegistrationEmail(email)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide a valid email address'
+            });
+        }
+
+        // Generate OTP
+        const otp = generateOTP();
+        const expiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes
+
+        console.log(`🔐 Generated OTP for ${emailLower}: ${otp} (expires in 10 minutes)`);
+
+        // Store registration data temporarily with OTP
+        otpStore.set(emailLower, {
+            otp,
+            expiresAt,
+            purpose: 'registration',
+            userData: {
+                name: name.trim(),
+                email: emailLower,
+                password, // Will be hashed when user is actually created
+                role: role || 'student'
+            },
+            attempts: 0,
+            verified: false
+        });
+
+        // Send OTP email
+        try {
+            await sendOTPEmail(email, otp);
+            console.log(`✅ OTP sent successfully to ${email}`);
+            
+            res.status(200).json({
+                success: true,
+                message: 'Registration initiated. Please check your email for the verification code.',
+                data: {
+                    email: email,
+                    expires_in: 10 * 60 // 10 minutes in seconds
+                }
+            });
+        } catch (emailError) {
+            console.error('❌ Failed to send OTP email:', emailError.message);
+            // Clean up stored data if email fails
+            otpStore.delete(emailLower);
+            
+            res.status(500).json({
+                success: false,
+                message: emailError.message || 'Failed to send verification email'
+            });
+        }
+
+    } catch (error) {
+        console.error('❌ Registration initiation error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Registration failed. Please try again.'
         });
     }
 });
@@ -309,48 +571,41 @@ router.post('/register-with-otp', registerValidation, async (req, res) => {
 
         const { name, email, password, role, otp } = req.body;
 
-        // Verify OTP first
-        const emailLower = email.toLowerCase();
+        // Normalize email
+        const emailLower = email.toString().trim().toLowerCase();
         const storedData = otpStore.get(emailLower);
+
+        console.log('🔍 Registration attempt for:', emailLower, {
+            hasStoredData: !!storedData,
+            isVerified: storedData?.verified,
+            isExpired: storedData ? (Date.now() > storedData.expiresAt) : 'N/A'
+        });
 
         if (!storedData) {
             console.log('❌ No OTP data found for:', emailLower);
-            console.log('📋 Available OTPs in store:', Array.from(otpStore.keys()));
             return res.status(400).json({
                 success: false,
-                message: 'OTP not found or expired. Please request a new OTP.'
+                message: 'OTP session not found. Please start the registration process again.'
             });
         }
 
-        console.log('🔍 OTP validation for:', emailLower, {
-            hasOTP: !!storedData.otp,
-            isVerified: !!storedData.verified,
-            expired: Date.now() > storedData.expiresAt,
-            otpMatch: storedData.otp === otp?.toString()
-        });
-
-        if (Date.now() > storedData.expiresAt) {
-            otpStore.delete(emailLower);
-            return res.status(400).json({
-                success: false,
-                message: 'OTP has expired'
-            });
-        }
-
-        if (storedData.otp !== otp.toString()) {
-            storedData.attempts = (storedData.attempts || 0) + 1;
-            otpStore.set(emailLower, storedData);
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid OTP'
-            });
-        }
-
-        // Require that the OTP was verified previously via /verify-otp endpoint
+        // Check if OTP was properly verified
         if (!storedData.verified) {
+            console.log('❌ OTP not verified for:', emailLower);
             return res.status(400).json({
                 success: false,
-                message: 'OTP must be verified before registration'
+                message: 'Email verification required. Please verify your OTP first.'
+            });
+        }
+
+        // Check if verification is still valid (allow 30 minutes after verification)
+        const verificationTimeout = 30 * 60 * 1000; // 30 minutes
+        if (storedData.verifiedAt && (Date.now() - storedData.verifiedAt) > verificationTimeout) {
+            otpStore.delete(emailLower);
+            console.log('❌ OTP verification expired for:', emailLower);
+            return res.status(400).json({
+                success: false,
+                message: 'Email verification has expired. Please start the registration process again.'
             });
         }
 
@@ -505,20 +760,56 @@ router.post('/login-with-otp', async (req, res) => {
 // @route   GET /api/auth/oauth/google
 // @desc    Initiate Google OAuth
 router.get('/oauth/google', (req, res) => {
-    // Check if OAuth is configured
-    if (!process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID === 'disabled') {
+    // Enhanced OAuth configuration checks
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    
+    console.log('🔍 Google OAuth request - checking configuration...');
+    console.log(`   Client ID: ${clientId ? clientId.substring(0, 12) + '...' : 'NOT SET'}`);
+    console.log(`   Client Secret: ${clientSecret ? 'SET (hidden)' : 'NOT SET'}`);
+    
+    // Check if OAuth credentials are missing
+    if (!clientId || !clientSecret) {
+        console.log('❌ Google OAuth credentials not configured');
         return res.status(501).json({
             success: false,
-            message: 'Google OAuth is not configured. Please set up Google Cloud Console credentials.'
+            message: 'Google OAuth is not configured. Please set up Google Cloud Console credentials.',
+            details: {
+                clientIdSet: !!clientId,
+                clientSecretSet: !!clientSecret,
+                setupGuide: 'See GOOGLE_OAUTH_SETUP_GUIDE.md for setup instructions'
+            }
+        });
+    }
+    
+    // Check if Client ID has incorrect format (GitHub OAuth ID)
+    if (clientId.startsWith('Ov23') || !clientId.includes('.apps.googleusercontent.com')) {
+        console.log('❌ Google OAuth Client ID appears to be incorrect format (possibly GitHub OAuth ID)');
+        return res.status(501).json({
+            success: false,
+            message: 'Google OAuth Client ID appears to be invalid. Expected Google format: xxx.apps.googleusercontent.com',
+            details: {
+                currentClientId: clientId.substring(0, 20) + '...',
+                expectedFormat: 'xxx.apps.googleusercontent.com',
+                setupGuide: 'Please check GOOGLE_OAUTH_SETUP_GUIDE.md for correct setup'
+            }
         });
     }
 
+    // Dynamic redirect URI based on current server configuration
+    const serverPort = process.env.PORT || 5000;
+    const redirectUri = `http://localhost:${serverPort}/api/auth/oauth/google/callback`;
+    
+    console.log(`🔗 Google OAuth initiated with redirect URI: ${redirectUri}`);
+
     const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${process.env.GOOGLE_CLIENT_ID}&` +
-        `redirect_uri=${process.env.GOOGLE_REDIRECT_URI}&` +
+        `client_id=${clientId}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
         `response_type=code&` +
         `scope=openid email profile&` +
         `state=${crypto.randomBytes(32).toString('hex')}`;
+
+    console.log('✅ Google OAuth URL generated successfully');
 
     res.json({
         success: true,
@@ -526,14 +817,51 @@ router.get('/oauth/google', (req, res) => {
     });
 });
 
+// @route   GET /api/auth/oauth/google/debug
+// @desc    Debug Google OAuth configuration
+router.get('/oauth/google/debug', (req, res) => {
+    const serverPort = process.env.PORT || 5000;
+    const redirectUri = `http://localhost:${serverPort}/api/auth/oauth/google/callback`;
+    
+    res.json({
+        success: true,
+        debug: {
+            clientId: process.env.GOOGLE_CLIENT_ID ? 
+                process.env.GOOGLE_CLIENT_ID.substring(0, 12) + '...' : 
+                'Not configured',
+            redirectUri: redirectUri,
+            serverPort: serverPort,
+            clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+            hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET
+        }
+    });
+});
+
 // @route   GET /api/auth/oauth/github
 // @desc    Initiate GitHub OAuth
 router.get('/oauth/github', (req, res) => {
+    // Check if GitHub credentials are properly configured
+    if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET || 
+        process.env.GITHUB_CLIENT_SECRET === 'ghs_PLACEHOLDER_WILL_NEED_REAL_SECRET_FROM_GITHUB_OAUTH_APP') {
+        console.log('⚠️ GitHub OAuth credentials not configured properly');
+        return res.status(500).json({
+            success: false,
+            message: 'GitHub OAuth is not configured. Please contact administrator.',
+            debug: {
+                hasClientId: !!process.env.GITHUB_CLIENT_ID,
+                hasClientSecret: !!process.env.GITHUB_CLIENT_SECRET && process.env.GITHUB_CLIENT_SECRET !== 'ghs_PLACEHOLDER_WILL_NEED_REAL_SECRET_FROM_GITHUB_OAUTH_APP',
+                hasRedirectUri: !!process.env.GITHUB_REDIRECT_URI
+            }
+        });
+    }
+
     const githubAuthUrl = `https://github.com/login/oauth/authorize?` +
         `client_id=${process.env.GITHUB_CLIENT_ID}&` +
-        `redirect_uri=${process.env.GITHUB_REDIRECT_URI}&` +
+        `redirect_uri=${encodeURIComponent(process.env.GITHUB_REDIRECT_URI)}&` +
         `scope=user:email&` +
         `state=${crypto.randomBytes(32).toString('hex')}`;
+
+    console.log('🔗 Generated GitHub OAuth URL:', githubAuthUrl);
 
     res.json({
         success: true,
@@ -646,6 +974,9 @@ router.post('/login', loginEmailValidation, async (req, res) => {
             });
         }
 
+        // Update last login timestamp
+        await user.update({ last_login: new Date() });
+
         // Generate token
         const token = generateToken(user);
 
@@ -694,8 +1025,9 @@ router.get('/verify', async (req, res) => {
         // Verify JWT token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
-        // Check if user still exists
-        const user = await User.findByPk(decoded.id);
+        // Check if user still exists (handle both regular and OAuth tokens)
+        const userId = decoded.userId || decoded.id; // Support both OAuth tokens (userId) and regular tokens (id)
+        const user = await User.findByPk(userId);
         
         if (!user) {
             return res.status(401).json({
@@ -726,6 +1058,72 @@ router.get('/verify', async (req, res) => {
             message: 'Invalid token'
         });
     }
+});
+
+// @route   POST /api/auth/forgot-password
+router.post('/forgot-password', async (req, res) => {
+    try {
+        console.log('🔐 Forgot password request:', req.body.email);
+
+        const { email } = req.body;
+        
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email is required'
+            });
+        }
+
+        // Check if user exists
+        const user = await User.findOne({
+            where: { email: email.toLowerCase() }
+        });
+
+        // Always return success message for security (don't reveal if email exists)
+        if (!user) {
+            console.log('❌ User not found for forgot password:', email);
+            return res.json({
+                success: true,
+                message: 'If an account with this email exists, a password reset link will be sent.'
+            });
+        }
+
+        // Generate temporary password (in a real app, you'd send a secure reset token)
+        const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+        console.log(`🔐 Generated temporary password for ${user.email}: ${tempPassword}`);
+
+        // Hash the temporary password using bcryptjs (same as rest of the app)
+        const hashedPassword = await bcrypt.hash(tempPassword, 12);
+
+        // Update user's password
+        await user.update({ password: hashedPassword });
+
+        // In production, send email with reset link instead
+        console.log(`📧 Temporary password for ${user.email}: ${tempPassword}`);
+        
+        res.json({
+            success: true,
+            message: 'If an account with this email exists, a password reset link will be sent.',
+            // Include temp password in development mode
+            ...(process.env.NODE_ENV === 'development' && { tempPassword })
+        });
+
+    } catch (error) {
+        console.error('💥 Error in forgot password:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Unable to process password reset. Please try again later.'
+        });
+    }
+});
+
+// @route   POST /api/auth/logout
+// @desc    Logout user (client-side token removal)
+router.post('/logout', (req, res) => {
+    res.json({
+        success: true,
+        message: 'Logged out successfully'
+    });
 });
 
 module.exports = router;

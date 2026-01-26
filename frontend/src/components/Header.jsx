@@ -1,7 +1,14 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
 
 function Header() {
     const location = useLocation()
+    const { logout, user } = useAuth()
+
+    const handleLogout = () => {
+        console.log('🖱️ Header: Logout button clicked');
+        logout();
+    }
 
     return (
         <header className="bg-blue-600 text-white shadow-lg">
@@ -52,8 +59,11 @@ function Header() {
 
                     {/* User Menu */}
                     <div className="flex items-center space-x-4">
-                        <span className="text-sm">Welcome, Admin</span>
-                        <button className="bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded text-sm transition-colors">
+                        <span className="text-sm">Welcome, {user?.name || 'User'}</span>
+                        <button 
+                            onClick={handleLogout}
+                            className="bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded text-sm transition-colors"
+                        >
                             Logout
                         </button>
                     </div>

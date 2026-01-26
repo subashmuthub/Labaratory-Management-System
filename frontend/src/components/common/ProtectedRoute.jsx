@@ -6,32 +6,48 @@ export function ProtectedRoute({ children, requiredRole = null }) {
     const { user, loading, isAuthenticated } = useAuth()
     const location = useLocation()
 
-    // Show loading while authentication is being verified
-    if (loading) {
+    // Check for stored authentication immediately
+    const getStoredAuth = () => {
+        try {
+            const storedToken = localStorage.getItem('token')
+            const storedUser = localStorage.getItem('user')
+            return storedToken && storedUser ? JSON.parse(storedUser) : null
+        } catch (error) {
+            console.error('Error reading stored auth:', error)
+            return null
+        }
+    }
+
+    const storedUser = getStoredAuth()
+    const currentUser = user || storedUser
+    
+    // Check if user is authenticated (either from state or storage)
+    const isUserAuthenticated = isAuthenticated || !!storedUser
+    
+    // Show minimal loading only when necessary
+    if (loading && !storedUser) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="fixed inset-0 flex items-center justify-center bg-white bg-opacity-90 z-50">
                 <div className="text-center">
-                    <div className="relative">
-                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200"></div>
-                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent absolute top-0"></div>
-                    </div>
-                    <p className="text-gray-600 mt-4 font-medium">Authenticating...</p>
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent mx-auto"></div>
+                    <p className="text-gray-600 mt-2 text-sm">Loading...</p>
                 </div>
             </div>
         )
     }
-
-    // Redirect to login if not authenticated
-    if (!isAuthenticated || !user) {
+    
+    // Only redirect to login if definitely not authenticated
+    if (!isUserAuthenticated) {
+        console.log('🚪 ProtectedRoute: No authentication found, redirecting to login')
         return <Navigate to="/login" state={{ from: location }} replace />
     }
 
     // Check for required role if specified
-    if (requiredRole) {
+    if (requiredRole && currentUser) {
         // Handle both single role and array of roles
         const hasRequiredRole = Array.isArray(requiredRole) 
-            ? requiredRole.includes(user.role)
-            : user.role === requiredRole;
+            ? requiredRole.includes(currentUser.role)
+            : currentUser.role === requiredRole;
 
         if (!hasRequiredRole) {
             return (
@@ -47,7 +63,7 @@ export function ProtectedRoute({ children, requiredRole = null }) {
                             You don't have permission to access this page.
                         </p>
                         <p className="text-sm text-gray-500 mb-6">
-                            Your role: <span className="font-medium capitalize">{user.role?.replace('_', ' ')}</span>
+                            Your role: <span className="font-medium capitalize">{currentUser.role?.replace('_', ' ')}</span>
                             <br />
                             Required: <span className="font-medium">
                                 {Array.isArray(requiredRole) 

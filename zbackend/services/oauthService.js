@@ -7,17 +7,39 @@ class OAuthService {
     // Google OAuth Token Exchange
     static async exchangeGoogleCodeForToken(code) {
         try {
+            // Dynamic redirect URI based on current server configuration
+            const serverPort = process.env.PORT || 5000;
+            const redirectUri = `http://localhost:${serverPort}/api/auth/oauth/google/callback`;
+            
+            console.log(`🔗 Exchanging Google code with redirect URI: ${redirectUri}`);
+
             const response = await axios.post('https://oauth2.googleapis.com/token', {
                 client_id: process.env.GOOGLE_CLIENT_ID,
                 client_secret: process.env.GOOGLE_CLIENT_SECRET,
                 code: code,
                 grant_type: 'authorization_code',
-                redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+                redirect_uri: redirectUri,
             });
 
             return response.data;
         } catch (error) {
             console.error('Google token exchange error:', error.response?.data || error.message);
+            console.error('Error details:', {
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                message: error.message
+            });
+            
+            // More specific error messages for common issues
+            if (error.response?.data?.error === 'invalid_grant') {
+                throw new Error('Authorization code expired or already used. Please try the login process again.');
+            } else if (error.response?.data?.error === 'redirect_uri_mismatch') {
+                throw new Error('Redirect URI mismatch. Please ensure the redirect URI is properly configured in Google Cloud Console.');
+            } else if (error.response?.data?.error === 'invalid_client') {
+                throw new Error('Invalid client credentials. Please check your Google Client ID and Secret.');
+            }
+            
             throw new Error('Failed to exchange Google code for token');
         }
     }
@@ -36,6 +58,14 @@ class OAuthService {
     // GitHub OAuth Token Exchange
     static async exchangeGitHubCodeForToken(code) {
         try {
+            console.log('🔗 Exchanging GitHub code for token');
+            console.log('📋 GitHub credentials:', {
+                hasClientId: !!process.env.GITHUB_CLIENT_ID,
+                clientIdStart: process.env.GITHUB_CLIENT_ID?.substring(0, 8),
+                hasClientSecret: !!process.env.GITHUB_CLIENT_SECRET,
+                secretStart: process.env.GITHUB_CLIENT_SECRET?.substring(0, 8)
+            });
+
             const response = await axios.post('https://github.com/login/oauth/access_token', {
                 client_id: process.env.GITHUB_CLIENT_ID,
                 client_secret: process.env.GITHUB_CLIENT_SECRET,
@@ -46,9 +76,20 @@ class OAuthService {
                 },
             });
 
+            console.log('🔍 GitHub token response:', {
+                status: response.status,
+                data: response.data,
+                hasAccessToken: !!response.data?.access_token
+            });
+
             return response.data;
         } catch (error) {
-            console.error('GitHub token exchange error:', error.response?.data || error.message);
+            console.error('❌ GitHub token exchange error:', {
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                message: error.message
+            });
             throw new Error('Failed to exchange GitHub code for token');
         }
     }
@@ -183,7 +224,7 @@ class OAuthService {
     // Generate JWT for OAuth User
     static generateJWT(user) {
         const payload = {
-            id: user.id,
+            userId: user.id,
             email: user.email,
             name: user.name,
             role: user.role,
@@ -220,7 +261,7 @@ class OAuthService {
                         name: user.name,
                         email: user.email,
                         role: user.role,
-                        isEmailVerified: user.isEmailVerified,
+                        isEmailVerified: user.is_email_verified,
                     }
                 }
             };
@@ -261,7 +302,7 @@ class OAuthService {
                         name: user.name,
                         email: user.email,
                         role: user.role,
-                        isEmailVerified: user.isEmailVerified,
+                        isEmailVerified: user.is_email_verified,
                     }
                 }
             };

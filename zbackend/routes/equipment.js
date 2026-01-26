@@ -490,6 +490,74 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
+// DELETE bulk delete equipment by lab
+router.delete('/lab/:labId/bulk', async (req, res) => {
+    try {
+        const { labId } = req.params;
+
+        // Check if user is admin
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Only administrators can perform bulk delete operations'
+            });
+        }
+
+        // Check if lab exists
+        const lab = await Lab.findByPk(labId);
+        if (!lab) {
+            return res.status(404).json({
+                success: false,
+                message: 'Lab not found'
+            });
+        }
+
+        // Count equipment in this lab
+        const equipmentCount = await Equipment.count({
+            where: {
+                lab_id: labId,
+                is_active: true
+            }
+        });
+
+        if (equipmentCount === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No equipment found in this lab'
+            });
+        }
+
+        // Soft delete all equipment in this lab
+        const result = await Equipment.update(
+            { is_active: false },
+            {
+                where: {
+                    lab_id: labId,
+                    is_active: true
+                }
+            }
+        );
+
+        res.json({
+            success: true,
+            message: `Successfully deleted ${equipmentCount} equipment items from ${lab.name}`,
+            data: {
+                deletedCount: equipmentCount,
+                labName: lab.name
+            }
+        });
+    } catch (error) {
+        console.error('Error bulk deleting equipment:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to delete equipment',
+            error: error.message
+        });
+    }
+});
+
+
+
 // POST bulk import equipment
 router.post('/bulk-import', async (req, res) => {
     try {
@@ -547,17 +615,22 @@ router.post('/bulk-import', async (req, res) => {
                             serialNumber = `${data.serial_number.trim()}-${(q + 1).toString().padStart(2, '0')}`;
                         }
 
-                        // Check for duplicate serial number
-                        const existingEquipment = await Equipment.findOne({
-                            where: { 
-                                serial_number: serialNumber,
-                                is_active: true 
-                            }
-                        });
-
-                        if (existingEquipment) {
+                        // Check for existing serial numbers and generate unique ones if needed
+                        let attempts = 0;
+                        while (attempts < 10) {
+                            const existing = await Equipment.findOne({ 
+                                where: { serial_number: serialNumber, is_active: true } 
+                            });
+                            if (!existing) break;
+                            
+                            attempts++;
+                            const timestamp = new Date().getTime().toString().slice(-4);
+                            serialNumber = `${data.serial_number.trim()}-${(q + 1).toString().padStart(2, '0')}-${timestamp}`;
+                        }
+                        
+                        if (attempts >= 10) {
                             results.failed++;
-                            results.errors.push(`Row ${rowNumber}: Equipment with serial number ${serialNumber} already exists`);
+                            results.errors.push(`Row ${rowNumber}: Could not generate unique serial number after 10 attempts`);
                             continue;
                         }
 
@@ -575,7 +648,7 @@ router.post('/bulk-import', async (req, res) => {
                             condition_status: data.condition_status || 'good',
                             purchase_price: data.purchase_price ? parseFloat(data.purchase_price) : null,
                             current_value: data.current_value ? parseFloat(data.current_value) : null,
-                            purchase_date: data.purchase_date ? new Date(data.purchase_date) : new Date(),
+                            purchase_date: data.purchase_date && !isNaN(new Date(data.purchase_date)) ? new Date(data.purchase_date) : new Date(),
                             warranty_expiry: data.warranty_expiry ? new Date(data.warranty_expiry) : null,
                             processor: data.processor?.trim() || null,
                             ram: data.ram?.trim() || null,
@@ -589,7 +662,7 @@ router.post('/bulk-import', async (req, res) => {
                         };
 
                         // Validate status values
-                        const validStatuses = ['available', 'in_use', 'maintenance', 'retired'];
+                        const validStatuses = ['available', 'in_use', 'maintenance', 'broken', 'retired'];
                         if (!validStatuses.includes(equipmentDataItem.status)) {
                             results.failed++;
                             results.errors.push(`Row ${rowNumber}: Invalid status '${equipmentDataItem.status}'. Must be one of: ${validStatuses.join(', ')}`);
@@ -597,7 +670,7 @@ router.post('/bulk-import', async (req, res) => {
                         }
 
                         // Validate condition status
-                        const validConditions = ['excellent', 'good', 'fair', 'poor', 'damaged'];
+                        const validConditions = ['excellent', 'good', 'fair', 'poor'];
                         if (!validConditions.includes(equipmentDataItem.condition_status)) {
                             results.failed++;
                             results.errors.push(`Row ${rowNumber}: Invalid condition '${equipmentDataItem.condition_status}'. Must be one of: ${validConditions.join(', ')}`);

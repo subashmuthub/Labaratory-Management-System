@@ -1,17 +1,40 @@
 // src/pages/OAuthSuccess.jsx - OAuth Success Handler
-import { useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
+import { useEffect, useRef } from 'react'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
 
 function OAuthSuccess() {
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
-    const { login } = useAuth()
+    const location = useLocation()
+    const { handleOAuthSuccess } = useAuth()
+    const hasProcessed = useRef(false)
 
     useEffect(() => {
-        const handleOAuthSuccess = async () => {
+        // Check if we're actually on the oauth/success route
+        if (!location.pathname.includes('/oauth/success')) {
+            console.log('🚫 Not on OAuth success route, skipping OAuth processing');
+            return
+        }
+
+        // Prevent multiple executions
+        if (hasProcessed.current) {
+            console.log('🛑 OAuth already processed, skipping');
+            return
+        }
+
+        const processOAuthCallback = async () => {
+            hasProcessed.current = true
+            
+            console.log('🔗 OAuth Success page loaded');
+            console.log('📄 Current URL:', window.location.href);
+            console.log('🔍 Search params:', Object.fromEntries(searchParams));
+            
             const token = searchParams.get('token')
             const error = searchParams.get('error')
+
+            console.log('🔑 Token parameter:', token ? token.substring(0, 20) + '...' : 'null');
+            console.log('❌ Error parameter:', error);
 
             if (error) {
                 console.error('OAuth error:', error)
@@ -21,8 +44,7 @@ function OAuthSuccess() {
 
             if (token) {
                 try {
-                    // Store token and get user data
-                    localStorage.setItem('token', token)
+                    console.log('🔍 Decoding OAuth token');
                     
                     // Decode token to get user data (simple decode, not verification)
                     const base64Url = token.split('.')[1]
@@ -33,26 +55,40 @@ function OAuthSuccess() {
                             .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
                             .join('')
                     )
-                    const userData = JSON.parse(jsonPayload)
+                    const decodedToken = JSON.parse(jsonPayload)
                     
-                    localStorage.setItem('user', JSON.stringify(userData))
+                    // Create user object with proper structure
+                    const userData = {
+                        id: decodedToken.userId,
+                        email: decodedToken.email,
+                        name: decodedToken.name,
+                        role: decodedToken.role,
+                        isEmailVerified: true // OAuth users are verified
+                    }
                     
-                    // Update auth context
-                    login(userData, token)
+                    console.log('👤 Extracted OAuth user data:', userData);
                     
-                    // Redirect to dashboard
-                    navigate('/dashboard')
+                    // Use the dedicated OAuth success handler
+                    handleOAuthSuccess(token, userData)
+                    
+                    console.log('🎯 OAuth processing complete - redirecting to dashboard');
+                    
+                    // Clean redirect to dashboard and remove search params from history
+                    window.history.replaceState({}, '', '/dashboard')
+                    navigate('/dashboard', { replace: true })
+                    
                 } catch (error) {
-                    console.error('Token processing error:', error)
+                    console.error('❌ Token processing error:', error)
                     navigate('/login?error=token_invalid')
                 }
             } else {
+                console.warn('⚠️ No token found in URL parameters');
                 navigate('/login?error=no_token')
             }
         }
 
-        handleOAuthSuccess()
-    }, [searchParams, navigate, login])
+        processOAuthCallback()
+    }, [searchParams, navigate, handleOAuthSuccess])
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">

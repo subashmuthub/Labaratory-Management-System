@@ -390,7 +390,7 @@ const HomePage = () => {
                 </div>
             </section>
 
-            {/* Statistics Section */}
+            {/* Statistics Section - Our Impact in Numbers */}
             <section id="stats" className="py-20 bg-gradient-to-r from-blue-600 to-purple-600">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-16">
@@ -401,19 +401,214 @@ const HomePage = () => {
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-                        {stats.map((stat, index) => (
-                            <div key={index} className="text-center">
-                                <div className="text-5xl mb-2">{stat.icon}</div>
-                                <div className="text-4xl font-bold text-white mb-2">{stat.number}</div>
-                                <div className="text-white/80">{stat.label}</div>
+                        <div className="text-center">
+                            <div className="text-6xl mb-4">
+                                <svg className="w-16 h-16 mx-auto text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                                </svg>
                             </div>
-                        ))}
+                            <div className="text-4xl font-bold text-white mb-2">50+</div>
+                            <div className="text-white/80">Labs Managed</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-6xl mb-4">
+                                <svg className="w-16 h-16 mx-auto text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27C12.59 15.41 11.11 16 9.5 16A6.5 6.5 0 0 1 3 9.5A6.5 6.5 0 0 1 9.5 3m0 2C7.01 5 5 7.01 5 9.5S7.01 14 9.5 14 14 11.99 14 9.5 11.99 5 9.5 5Z"/>
+                                </svg>
+                            </div>
+                            <div className="text-4xl font-bold text-white mb-2">500+</div>
+                            <div className="text-white/80">Equipment Items</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-6xl mb-4">
+                                <svg className="w-16 h-16 mx-auto text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2m4 18v-6h2.5l-2.54-7.63A1.5 1.5 0 0 0 18.5 7H16c-.8 0-1.5.7-1.5 1.5v6c0 .8.7 1.5 1.5 1.5h1v4h2M12.5 11.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5S11 9.17 11 10s.67 1.5 1.5 1.5M5.5 6c1.11 0 2-.89 2-2s-.89-2-2-2-2 .89-2 2 .89 2 2 2M7.5 22v-7H9V9.5C9 8.67 8.33 8 7.5 8S6 8.67 6 9.5V15h1.5v7h0Z"/>
+                                </svg>
+                            </div>
+                            <div className="text-4xl font-bold text-white mb-2">1000+</div>
+                            <div className="text-white/80">Active Users</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-6xl mb-4">
+                                <svg className="w-16 h-16 mx-auto text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M11,15H13V17H11V15M11,7H13V13H11V7M12,2C6.47,2 2,6.5 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20Z"/>
+                                </svg>
+                            </div>
+                            <div className="text-4xl font-bold text-white mb-2">99.9%</div>
+                            <div className="text-white/80">Uptime</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Recruiters Section */}
+            <section className="py-20 bg-gray-50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center mb-16">
+                        <h2 className="text-4xl font-bold text-blue-900 mb-4">
+                            Recruiters
+                        </h2>
+                        <div className="w-24 h-1 bg-gradient-to-r from-blue-600 to-purple-600 mx-auto mb-8"></div>
+                        <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+                            Our prestigious recruitment partners who trust our graduates
+                        </p>
+                    </div>
+
+                    {/* Company Logos Grid */}
+                    <div className="bg-white rounded-xl shadow-lg p-8">
+                        {/* First Row */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8 items-center">
+                            <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                Zoho
+                            </div>
+                            <div className="bg-gradient-to-r from-blue-700 to-blue-900 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                TATA
+                                <div className="text-xs">CONSULTANCY SERVICES</div>
+                            </div>
+                            <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                Cognizant
+                            </div>
+                            <div className="bg-gradient-to-r from-purple-500 to-blue-600 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                wipro
+                            </div>
+                            <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                Infosys
+                                <div className="text-xs">LIMITED BY EXCELLENCE POWERED BY VALUES</div>
+                            </div>
+                        </div>
+
+                        {/* Second Row */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8 items-center">
+                            <div className="bg-gradient-to-r from-purple-600 to-purple-800 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                accenture
+                            </div>
+                            <div className="bg-gradient-to-r from-blue-800 to-blue-900 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                IBM
+                            </div>
+                            <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                Infoview
+                            </div>
+                            <div className="bg-gradient-to-r from-blue-500 to-green-500 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                solartis
+                            </div>
+                            <div className="bg-gradient-to-r from-blue-700 to-blue-900 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                HCL
+                            </div>
+                        </div>
+
+                        {/* Third Row */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8 items-center">
+                            <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                HEXAWARE
+                            </div>
+                            <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                Atos Syntel
+                            </div>
+                            <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                Tech Mahindra
+                            </div>
+                            <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                TESSOLVE
+                                <div className="text-xs">Design Engineering Services</div>
+                            </div>
+                            <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                AstraZeneca
+                            </div>
+                        </div>
+
+                        {/* Fourth Row */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8 items-center">
+                            <div className="bg-gradient-to-r from-blue-800 to-blue-900 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                MBit
+                                <div className="text-xs">WIRELESS</div>
+                            </div>
+                            <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                Brahms India Private Limited
+                            </div>
+                            <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                cadence
+                            </div>
+                            <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                H&R
+                                <div className="text-xs">BLOCK ADVANTAGE</div>
+                            </div>
+                            <div className="bg-gradient-to-r from-green-500 to-green-700 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                e-con Systems
+                                <div className="text-xs">Real Product Development Partners</div>
+                            </div>
+                        </div>
+
+                        {/* Fifth Row */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8 items-center">
+                            <div className="bg-gradient-to-r from-green-500 to-green-700 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                SmartDV
+                                <div className="text-xs">Technologies</div>
+                            </div>
+                            <div className="bg-gradient-to-r from-blue-500 to-blue-700 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                Lucid
+                                <div className="text-xs">Imaging</div>
+                            </div>
+                            <div className="bg-gradient-to-r from-blue-400 to-blue-600 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                Apptivo
+                            </div>
+                            <div className="bg-gradient-to-r from-red-500 to-red-700 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                Jilaba
+                                <div className="text-xs">Software Limited</div>
+                            </div>
+                            <div className="bg-gradient-to-r from-gray-700 to-gray-900 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                JMAN Group
+                            </div>
+                        </div>
+
+                        {/* Sixth Row */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 items-center">
+                            <div className="bg-gradient-to-r from-red-500 to-red-700 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                DOYENSYS
+                                <div className="text-xs">Technology Solutions Pvt. Ltd.</div>
+                            </div>
+                            <div className="bg-gradient-to-r from-red-600 to-red-800 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                BROADCOM
+                            </div>
+                            <div className="bg-gradient-to-r from-blue-500 to-blue-700 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                VVDN
+                                <div className="text-xs">TECHNOLOGIES</div>
+                            </div>
+                            <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                Caliber Interconnect Solutions
+                            </div>
+                            <div className="bg-gradient-to-r from-red-600 to-red-800 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
+                                FSS
+                                <div className="text-xs">POWERING PAYMENTS</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Additional recruitment statistics */}
+                    <div className="mt-12 text-center">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div className="bg-white rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow">
+                                <h3 className="text-2xl font-bold text-blue-600 mb-2">125+</h3>
+                                <p className="text-gray-600">Companies</p>
+                            </div>
+                            <div className="bg-white rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow">
+                                <h3 className="text-2xl font-bold text-purple-600 mb-2">450+</h3>
+                                <p className="text-gray-600">Offers</p>
+                            </div>
+                            <div className="bg-white rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow">
+                                <h3 className="text-2xl font-bold text-green-600 mb-2">76</h3>
+                                <p className="text-gray-600">Students Got 8-10 LPA</p>
+                            </div>
+                            <div className="bg-white rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow">
+                                <h3 className="text-2xl font-bold text-orange-600 mb-2">90%</h3>
+                                <p className="text-gray-600">Consistent Placement</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
 
             {/* CTA Section */}
-            <section className="py-20 bg-gray-50">
+            <section className="py-20 bg-white">
                 <div className="max-w-4xl mx-auto text-center px-4">
                     <h2 className="text-4xl font-bold text-gray-900 mb-4">
                         Ready to Transform Your Lab Management?
@@ -446,19 +641,19 @@ const HomePage = () => {
                         <div>
                             <h4 className="text-lg font-semibold mb-4 text-white">For Technical Support</h4>
                             <div className="text-gray-300 space-y-2">
-                                <p className="font-medium">Dr. D. Venkatkumar M.E.,Ph.D</p>
-                                <p>Professor / Mechanical Engineering</p>
+                                <p className="font-medium">Dr. S.Kalaiselvi M.E.,Ph.D</p>
+                                <p>Professor / Computer Engineering</p>
                                 <p className="flex items-center">
                                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 002 2v10a2 2 0 002 2z" />
                                     </svg>
-                                    Email: dvkmech@nec.edu.in
+                                    Email: sks@nec.edu.in
                                 </p>
                                 <p className="flex items-center">
                                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                                     </svg>
-                                    Ph: 9443660339
+                                    Ph: 9486512323
                                 </p>
                             </div>
                         </div>
@@ -507,10 +702,10 @@ const HomePage = () => {
                         <div>
                             <h4 className="text-lg font-semibold mb-4 text-purple-400">Follow Us</h4>
                             <div className="flex space-x-3 mb-4">
-                                {/* Twitter */}
-                                <a href="#" className="bg-blue-500 hover:bg-blue-600 p-2 rounded transition-colors">
+                                {/* LinkedIn */}
+                                <a href="https://www.linkedin.com/school/national-engineering-college/posts/?feedView=all" target="_blank" rel="noopener noreferrer" className="bg-blue-700 hover:bg-blue-800 p-2 rounded transition-colors">
                                     <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"/>
+                                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
                                     </svg>
                                 </a>
                                 
@@ -522,7 +717,7 @@ const HomePage = () => {
                                 </a>
                                 
                                 {/* Facebook */}
-                                <a href="#" className="bg-blue-600 hover:bg-blue-700 p-2 rounded transition-colors">
+                                <a href="https://www.facebook.com/neckvpt" target="_blank" rel="noopener noreferrer" className="bg-blue-600 hover:bg-blue-700 p-2 rounded transition-colors">
                                     <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
                                         <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                                     </svg>

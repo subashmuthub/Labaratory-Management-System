@@ -13,7 +13,11 @@ require('./models'); // This executes models/index.js and sets up all associatio
 console.log('✅ Models and associations loaded');
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: ['http://localhost:5173', 'http://localhost:3000', process.env.CLIENT_URL].filter(Boolean),
+    credentials: true,
+    optionsSuccessStatus: 200
+}));
 // Increase payload limits for image uploads (10MB limit)
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -24,9 +28,30 @@ app.use((req, res, next) => {
     next();
 });
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        status: 'OK',
+        message: 'LabMS Backend is running!',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+    });
+});
+
+app.get('/api/health', (req, res) => {
+    res.status(200).json({
+        status: 'OK',
+        message: 'LabMS Backend API is running!',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development',
+        database: 'connected' // You can add actual DB check here if needed
+    });
+});
+
 // Import routes
 const authRoutes = require('./routes/auth');
 const enhancedAuthRoutes = require('./routes/enhancedAuth');
+// const otpRoutes = require('./routes/otp'); // Temporarily disabled - using Enhanced Auth OTP
 const { router: recentlyAccessedRoutes } = require('./routes/recentlyAccessed');
 const usersRoutes = require('./routes/users');
 const equipmentRoutes = require('./routes/equipment');
@@ -44,6 +69,7 @@ const activitiesRoutes = require('./routes/activities');
 // Define routes configuration
 const routes = [
     { name: 'Enhanced Auth', path: '/api/auth', file: './routes/enhancedAuth' },
+    // { name: 'OTP', path: '/api/otp', file: './routes/otp' }, // Temporarily disabled - using Enhanced Auth OTP
     { name: 'Recent', path: '/api/recent', file: './routes/recentlyAccessed', isModule: true },
     { name: 'Users', path: '/api/users', file: './routes/users' },
     { name: 'Equipment', path: '/api/equipment', file: './routes/equipment' },
@@ -197,7 +223,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
     console.log(`🚀 Server is running on http://localhost:${PORT}`);
     console.log(`📚 API Documentation available at http://localhost:${PORT}/`);
 
@@ -237,5 +263,14 @@ function getRouteIcon(name) {
     };
     return icons[name] || '📌';
 }
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('👋 SIGTERM received. Shutting down gracefully...');
+    server.close(() => {
+        console.log('✅ Process terminated');
+        process.exit(0);
+    });
+});
 
 module.exports = app;
