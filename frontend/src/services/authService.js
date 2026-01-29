@@ -247,21 +247,43 @@ export const loginWithGoogle = async () => {
         const backendOAuthUrl = 'http://localhost:5000/api/auth/oauth/google';
         
         console.log('🔗 Fetching OAuth URL from backend...');
-        const response = await fetch(backendOAuthUrl);
+        const response = await fetch(backendOAuthUrl, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            mode: 'cors'
+        });
+        
+        if (!response.ok) {
+            console.error('❌ Backend response not OK:', response.status, response.statusText);
+            throw new Error(`Backend error: ${response.status} ${response.statusText}`);
+        }
+        
         const data = await response.json();
+        console.log('📊 Backend OAuth response:', { success: data.success, hasAuthUrl: !!data.authUrl });
         
         if (data.success && data.authUrl) {
             console.log('✅ Got OAuth URL, redirecting to Google...');
-            console.log('📝 Auth URL:', data.authUrl);
+            console.log('📝 Auth URL (truncated):', data.authUrl.substring(0, 100) + '...');
+            
+            // Store the current location for redirect after OAuth
+            sessionStorage.setItem('oauthRedirectUrl', window.location.pathname);
+            
             window.location.href = data.authUrl;
         } else {
             console.error('❌ Failed to get OAuth URL:', data);
-            throw new Error(data.message || 'Failed to initiate OAuth');
+            throw new Error(data.message || 'Failed to initiate OAuth - no auth URL received');
         }
         
         return { success: true };
     } catch (error) {
-        console.error('❌ Google login error:', error);
+        console.error('❌ Google login error details:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+        });
         throw new Error(`Google login failed: ${error.message}`);
     }
 }

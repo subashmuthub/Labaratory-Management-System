@@ -655,6 +655,17 @@ const HomePage = () => {
                                     </svg>
                                     Ph: 9486512323
                                 </p>
+                                
+                                {/* Team Information */}
+                                <div className="mt-6 pt-4 border-t border-gray-700">
+                                    <p className="font-semibold text-yellow-400 mb-2">Development Team</p>
+                                    <p className="text-blue-400 font-medium">Team 7 CSE</p>
+                                    <div className="mt-2 space-y-1 text-sm">
+                                        <p>Subash Muthu B</p>
+                                        <p>Subikshan M</p>
+                                        <p>Alwin Immanuel J</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -732,7 +743,7 @@ const HomePage = () => {
                     
                     {/* Bottom Copyright */}
                     <div className="border-t border-gray-700 mt-8 pt-6 text-center">
-                        <p className="text-blue-400 font-medium">Powered by NEC LMS</p>
+                        <p className="text-blue-400 font-medium">NEC LabMS</p>
                         <p className="text-gray-400 text-sm mt-1">&copy; 2024 National Engineering College Lab Management System. All rights reserved.</p>
                     </div>
                 </div>

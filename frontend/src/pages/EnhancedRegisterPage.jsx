@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { isValidRegistrationEmail, handleOAuthCallback } from '../services/authService'
-import OTPVerificationModal from '../components/auth/OTPVerificationModal'
+import OTPVerification from '../components/auth/OTPVerification'
 import SocialAuthButtons from '../components/auth/SocialAuthButtons'
 
 function EnhancedRegisterPage() {
@@ -493,14 +493,26 @@ function EnhancedRegisterPage() {
             </div>
 
             {/* OTP Verification Modal */}
-            <OTPVerificationModal
-                isOpen={showOTPModal}
-                onClose={() => setShowOTPModal(false)}
-                email={formData.email}
-                purpose="registration"
-                onSuccess={handleOTPSuccess}
-                onError={handleOTPError}
-            />
+            {showOTPModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-8 max-w-md w-full">
+                        <OTPVerification
+                            email={formData.email}
+                            onVerify={handleOTPSuccess}
+                            onResend={async () => {
+                                try {
+                                    await sendOTP(formData.email, 'registration')
+                                } catch (error) {
+                                    handleOTPError(error.message)
+                                }
+                            }}
+                            loading={loading}
+                            error={errors.otp}
+                            onBack={() => setShowOTPModal(false)}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     )
     }

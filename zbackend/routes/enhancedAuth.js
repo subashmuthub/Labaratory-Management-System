@@ -876,28 +876,42 @@ const OAuthService = require('../services/oauthService');
 // @desc    Handle Google OAuth callback
 router.get('/oauth/google/callback', async (req, res) => {
     try {
-        const { code, state } = req.query;
+        const { code, state, error } = req.query;
+        console.log('🔗 Processing Google OAuth callback');
+        console.log('📥 Callback params:', { code: code ? 'present' : 'missing', state: state ? 'present' : 'missing', error });
 
-        if (!code) {
-            return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/login?error=oauth_failed`);
+        // Handle OAuth errors from Google
+        if (error) {
+            console.error('❌ OAuth error from Google:', error);
+            const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+            return res.redirect(`${clientUrl}/login?error=${encodeURIComponent('OAuth authentication failed: ' + error)}`);
         }
 
-        console.log('🔗 Processing Google OAuth callback');
+        if (!code) {
+            console.error('❌ No authorization code received');
+            const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+            return res.redirect(`${clientUrl}/login?error=${encodeURIComponent('No authorization code received')}`);
+        }
 
         // Process Google OAuth
         const result = await OAuthService.processGoogleOAuth(code);
+        console.log('📊 OAuth processing result:', { success: result.success, hasToken: !!result.data?.token });
 
         if (result.success) {
             // Redirect to frontend with token
-            const redirectUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/oauth/success?token=${result.data.token}`;
+            const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+            const redirectUrl = `${clientUrl}/oauth/success?token=${result.data.token}`;
+            console.log('✅ OAuth successful, redirecting to frontend');
             res.redirect(redirectUrl);
         } else {
-            res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/login?error=${encodeURIComponent(result.message)}`);
+            console.error('❌ OAuth processing failed:', result.message);
+            const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+            res.redirect(`${clientUrl}/login?error=${encodeURIComponent(result.message || 'OAuth authentication failed')}`);
         }
-
     } catch (error) {
         console.error('💥 Google OAuth callback error:', error);
-        res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/login?error=oauth_server_error`);
+        const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+        res.redirect(`${clientUrl}/login?error=${encodeURIComponent('OAuth processing error: ' + error.message)}`);
     }
 });
 
