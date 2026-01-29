@@ -5,7 +5,6 @@ import ErrorBoundary from './components/ErrorBoundary'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/EnhancedRegisterPage'
-import OTPTestPage from './pages/OTPTestPage'
 import OAuthSuccess from './pages/OAuthSuccess'
 import Dashboard from './pages/Dashboard'
 import EquipmentInventory from './pages/EquipmentInventory'
@@ -22,8 +21,6 @@ import Calendar from './pages/Calendar'
 import Settings from './pages/Settings'
 import NewProfile from './pages/NewProfile'
 import Training from './pages/Training'
-import RefreshTestComponent from './components/RefreshTestComponent'
-import RefreshTestPage from './pages/RefreshTestPage'
 import './index.css'
 import Chatbot from './components/Chatbot'
 
@@ -54,9 +51,6 @@ function AppContent() {
 
         {/* OAuth Success Route */}
         <Route path="/oauth/success" element={<OAuthSuccess />} />
-
-        {/* OTP Test Page - for testing OTP functionality */}
-        <Route path="/otp-test" element={<OTPTestPage />} />
 
         {/* Protected Routes - require authentication */}
         <Route
@@ -188,25 +182,6 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <Training />
-            </ProtectedRoute>
-          }
-        />
-        {/* Refresh Test Component - for testing authentication persistence */}
-        <Route
-          path="/refresh-test"
-          element={
-            <ProtectedRoute>
-              <RefreshTestComponent />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Refresh Test Page - comprehensive refresh testing */}
-        <Route
-          path="/test-refresh"
-          element={
-            <ProtectedRoute>
-              <RefreshTestPage />
             </ProtectedRoute>
           }
         />
