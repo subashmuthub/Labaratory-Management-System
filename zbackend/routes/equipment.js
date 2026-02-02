@@ -4,6 +4,7 @@ const { Equipment, Lab, User } = require('../models');
 const { Op } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
 const { createNotification } = require('../utils/notificationService');
+const { trackAccess } = require('./recentlyAccessed');
 
 router.use(authenticateToken);
 
@@ -334,8 +335,189 @@ router.post('/', async (req, res) => {
     }
 });
 
+// POST bulk import equipment (MUST be before /:id route)
+router.post('/bulk-import', async (req, res) => {
+    console.log('📦 Bulk import request received');
+    console.log('User:', req.user?.email || 'Unknown');
+    console.log('Body keys:', Object.keys(req.body));
+    
+    try {
+        const { equipmentData } = req.body;
+
+        if (!Array.isArray(equipmentData) || equipmentData.length === 0) {
+            console.log('❌ Invalid equipment data array');
+            return res.status(400).json({
+                success: false,
+                message: 'Equipment data array is required'
+            });
+        }
+
+        console.log(`📊 Processing ${equipmentData.length} equipment items`);
+
+        if (equipmentData.length > 1000) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot import more than 1000 items at once'
+            });
+        }
+
+        const results = {
+            success: 0,
+            failed: 0,
+            errors: []
+        };
+
+        // Validate and import each equipment item
+        for (let i = 0; i < equipmentData.length; i++) {
+            const data = equipmentData[i];
+            const rowNumber = i + 1;
+
+            try {
+                // Validate required fields
+                if (!data.name || !data.serial_number || !data.category || !data.lab_id) {
+                    results.failed++;
+                    results.errors.push(`Row ${rowNumber}: Missing required fields (name, serial_number, category, lab_id)`);
+                    continue;
+                }
+
+                // Check if lab exists
+                const lab = await Lab.findByPk(data.lab_id);
+                if (!lab) {
+                    results.failed++;
+                    results.errors.push(`Row ${rowNumber}: Lab with ID ${data.lab_id} not found`);
+                    continue;
+                }
+
+                // Handle multiple equipment items if quantity > 1
+                const quantity = parseInt(data.quantity) || 1;
+                
+                for (let q = 0; q < quantity; q++) {
+                    try {
+                        // Generate unique serial number for each item if quantity > 1
+                        let serialNumber = data.serial_number.trim();
+                        if (quantity > 1) {
+                            serialNumber = `${data.serial_number.trim()}-${(q + 1).toString().padStart(2, '0')}`;
+                        }
+
+                        // Check for existing serial numbers and generate unique ones if needed
+                        let attempts = 0;
+                        while (attempts < 10) {
+                            const existing = await Equipment.findOne({ 
+                                where: { serial_number: serialNumber, is_active: true } 
+                            });
+                            if (!existing) break;
+                            
+                            attempts++;
+                            const timestamp = new Date().getTime().toString().slice(-4);
+                            serialNumber = `${data.serial_number.trim()}-${(q + 1).toString().padStart(2, '0')}-${timestamp}`;
+                        }
+                        
+                        if (attempts >= 10) {
+                            results.failed++;
+                            results.errors.push(`Row ${rowNumber}: Could not generate unique serial number after 10 attempts`);
+                            continue;
+                        }
+
+                        // Prepare equipment data
+                        const equipmentDataItem = {
+                            name: data.name.trim(),
+                            description: data.description?.trim() || null,
+                            serial_number: serialNumber,
+                            model: data.model?.trim() || null,
+                            manufacturer: data.manufacturer?.trim() || null,
+                            category: data.category.trim(),
+                            lab_id: parseInt(data.lab_id),
+                            location_details: data.location_details?.trim() || null,
+                            status: data.status || 'available',
+                            condition_status: data.condition_status || 'good',
+                            purchase_price: data.purchase_price ? parseFloat(data.purchase_price) : null,
+                            current_value: data.current_value ? parseFloat(data.current_value) : null,
+                            purchase_date: data.purchase_date && !isNaN(new Date(data.purchase_date)) ? new Date(data.purchase_date) : new Date(),
+                            warranty_expiry: data.warranty_expiry ? new Date(data.warranty_expiry) : null,
+                            processor: data.processor?.trim() || null,
+                            ram: data.ram?.trim() || null,
+                            storage: data.storage?.trim() || null,
+                            graphics_card: data.graphics_card?.trim() || null,
+                            operating_system: data.operating_system?.trim() || null,
+                            stock_register_page: data.stock_register_page ? String(data.stock_register_page) : null,
+                            is_active: true,
+                            created_by: req.user.userId
+                        };
+
+                        // Validate status values
+                        const validStatuses = ['available', 'in_use', 'maintenance', 'broken', 'retired'];
+                        if (!validStatuses.includes(equipmentDataItem.status)) {
+                            results.failed++;
+                            results.errors.push(`Row ${rowNumber}: Invalid status '${equipmentDataItem.status}'. Must be one of: ${validStatuses.join(', ')}`);
+                            continue;
+                        }
+
+                        // Validate condition status
+                        const validConditions = ['excellent', 'good', 'fair', 'poor'];
+                        if (!validConditions.includes(equipmentDataItem.condition_status)) {
+                            results.failed++;
+                            results.errors.push(`Row ${rowNumber}: Invalid condition '${equipmentDataItem.condition_status}'. Must be one of: ${validConditions.join(', ')}`);
+                            continue;
+                        }
+
+                        // Validate category
+                        const validCategories = [
+                            'computer', 'printer', 'projector', 'scanner', 'microscope',
+                            'centrifuge', 'spectrophotometer', 'ph_meter', 'balance',
+                            'incubator', 'autoclave', 'pipette', 'thermometer',
+                            'glassware', 'safety_equipment', 'lab_equipment', 'network', 'network_equipment', 'other'
+                        ];
+                        if (!validCategories.includes(equipmentDataItem.category)) {
+                            results.failed++;
+                            results.errors.push(`Row ${rowNumber}: Invalid category '${equipmentDataItem.category}'. Must be one of: ${validCategories.join(', ')}`);
+                            continue;
+                        }
+
+                        // Create equipment
+                        console.log(`📝 Creating equipment row ${rowNumber} (${q + 1}/${quantity}):`, {
+                            name: equipmentDataItem.name,
+                            serial_number: equipmentDataItem.serial_number,
+                            category: equipmentDataItem.category,
+                            lab_id: equipmentDataItem.lab_id
+                        });
+                        await Equipment.create(equipmentDataItem);
+                        console.log(`✅ Successfully created equipment: ${equipmentDataItem.name} (${equipmentDataItem.serial_number})`);
+                        results.success++;
+
+                    } catch (itemError) {
+                        console.error(`❌ Error importing equipment row ${rowNumber} item ${q + 1}:`, itemError);
+                        results.failed++;
+                        results.errors.push(`Row ${rowNumber} item ${q + 1}: ${itemError.message}`);
+                    }
+                }
+
+            } catch (error) {
+                console.error(`❌ Error processing equipment row ${rowNumber}:`, error);
+                results.failed++;
+                results.errors.push(`Row ${rowNumber}: ${error.message}`);
+            }
+        }
+
+        console.log('✅ Import completed:', results);
+        
+        return res.status(200).json({
+            success: true,
+            message: `Import completed. ${results.success} items imported successfully, ${results.failed} failed.`,
+            data: results
+        });
+
+    } catch (error) {
+        console.error('❌ Error in bulk import:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to process bulk import',
+            error: error.message
+        });
+    }
+});
+
 // GET equipment by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', trackAccess('equipment'), async (req, res) => {
     try {
         const equipment = await Equipment.findByPk(req.params.id, {
             include: [
@@ -551,181 +733,6 @@ router.delete('/lab/:labId/bulk', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to delete equipment',
-            error: error.message
-        });
-    }
-});
-
-
-
-// POST bulk import equipment
-router.post('/bulk-import', async (req, res) => {
-    try {
-        const { equipmentData } = req.body;
-
-        if (!Array.isArray(equipmentData) || equipmentData.length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Equipment data array is required'
-            });
-        }
-
-        if (equipmentData.length > 1000) {
-            return res.status(400).json({
-                success: false,
-                message: 'Cannot import more than 1000 items at once'
-            });
-        }
-
-        const results = {
-            success: 0,
-            failed: 0,
-            errors: []
-        };
-
-        // Validate and import each equipment item
-        for (let i = 0; i < equipmentData.length; i++) {
-            const data = equipmentData[i];
-            const rowNumber = i + 1;
-
-            try {
-                // Validate required fields
-                if (!data.name || !data.serial_number || !data.category || !data.lab_id) {
-                    results.failed++;
-                    results.errors.push(`Row ${rowNumber}: Missing required fields (name, serial_number, category, lab_id)`);
-                    continue;
-                }
-
-                // Check if lab exists
-                const lab = await Lab.findByPk(data.lab_id);
-                if (!lab) {
-                    results.failed++;
-                    results.errors.push(`Row ${rowNumber}: Lab with ID ${data.lab_id} not found`);
-                    continue;
-                }
-
-                // Handle multiple equipment items if quantity > 1
-                const quantity = parseInt(data.quantity) || 1;
-                
-                for (let q = 0; q < quantity; q++) {
-                    try {
-                        // Generate unique serial number for each item if quantity > 1
-                        let serialNumber = data.serial_number.trim();
-                        if (quantity > 1) {
-                            serialNumber = `${data.serial_number.trim()}-${(q + 1).toString().padStart(2, '0')}`;
-                        }
-
-                        // Check for existing serial numbers and generate unique ones if needed
-                        let attempts = 0;
-                        while (attempts < 10) {
-                            const existing = await Equipment.findOne({ 
-                                where: { serial_number: serialNumber, is_active: true } 
-                            });
-                            if (!existing) break;
-                            
-                            attempts++;
-                            const timestamp = new Date().getTime().toString().slice(-4);
-                            serialNumber = `${data.serial_number.trim()}-${(q + 1).toString().padStart(2, '0')}-${timestamp}`;
-                        }
-                        
-                        if (attempts >= 10) {
-                            results.failed++;
-                            results.errors.push(`Row ${rowNumber}: Could not generate unique serial number after 10 attempts`);
-                            continue;
-                        }
-
-                        // Prepare equipment data
-                        const equipmentDataItem = {
-                            name: data.name.trim(),
-                            description: data.description?.trim() || null,
-                            serial_number: serialNumber,
-                            model: data.model?.trim() || null,
-                            manufacturer: data.manufacturer?.trim() || null,
-                            category: data.category.trim(),
-                            lab_id: parseInt(data.lab_id),
-                            location_details: data.location_details?.trim() || null,
-                            status: data.status || 'available',
-                            condition_status: data.condition_status || 'good',
-                            purchase_price: data.purchase_price ? parseFloat(data.purchase_price) : null,
-                            current_value: data.current_value ? parseFloat(data.current_value) : null,
-                            purchase_date: data.purchase_date && !isNaN(new Date(data.purchase_date)) ? new Date(data.purchase_date) : new Date(),
-                            warranty_expiry: data.warranty_expiry ? new Date(data.warranty_expiry) : null,
-                            processor: data.processor?.trim() || null,
-                            ram: data.ram?.trim() || null,
-                            storage: data.storage?.trim() || null,
-                            graphics_card: data.graphics_card?.trim() || null,
-                            operating_system: data.operating_system?.trim() || null,
-                            // Additional fields for your format
-                            stock_register_page: data.stock_register_page ? String(data.stock_register_page) : null,
-                            is_active: true,
-                            created_by: req.user.userId
-                        };
-
-                        // Validate status values
-                        const validStatuses = ['available', 'in_use', 'maintenance', 'broken', 'retired'];
-                        if (!validStatuses.includes(equipmentDataItem.status)) {
-                            results.failed++;
-                            results.errors.push(`Row ${rowNumber}: Invalid status '${equipmentDataItem.status}'. Must be one of: ${validStatuses.join(', ')}`);
-                            continue;
-                        }
-
-                        // Validate condition status
-                        const validConditions = ['excellent', 'good', 'fair', 'poor'];
-                        if (!validConditions.includes(equipmentDataItem.condition_status)) {
-                            results.failed++;
-                            results.errors.push(`Row ${rowNumber}: Invalid condition '${equipmentDataItem.condition_status}'. Must be one of: ${validConditions.join(', ')}`);
-                            continue;
-                        }
-
-                        // Validate category
-                        const validCategories = [
-                            'computer', 'printer', 'projector', 'scanner', 'microscope',
-                            'centrifuge', 'spectrophotometer', 'ph_meter', 'balance',
-                            'incubator', 'autoclave', 'pipette', 'thermometer',
-                            'glassware', 'safety_equipment', 'lab_equipment', 'network', 'network_equipment', 'other'
-                        ];
-                        if (!validCategories.includes(equipmentDataItem.category)) {
-                            results.failed++;
-                            results.errors.push(`Row ${rowNumber}: Invalid category '${equipmentDataItem.category}'. Must be one of: ${validCategories.join(', ')}`);
-                            continue;
-                        }
-
-                        // Create equipment
-                        console.log(`📝 Creating equipment row ${rowNumber} (${q + 1}/${quantity}):`, {
-                            name: equipmentDataItem.name,
-                            serial_number: equipmentDataItem.serial_number,
-                            category: equipmentDataItem.category,
-                            lab_id: equipmentDataItem.lab_id
-                        });
-                        await Equipment.create(equipmentDataItem);
-                        console.log(`✅ Successfully created equipment: ${equipmentDataItem.name} (${equipmentDataItem.serial_number})`);
-                        results.success++;
-
-                    } catch (itemError) {
-                        console.error(`❌ Error importing equipment row ${rowNumber} item ${q + 1}:`, itemError);
-                        results.failed++;
-                        results.errors.push(`Row ${rowNumber} item ${q + 1}: ${itemError.message}`);
-                    }
-                }
-
-            } catch (error) {
-                console.error(`❌ Error processing equipment row ${rowNumber}:`, error);
-                results.failed++;
-                results.errors.push(`Row ${rowNumber}: ${error.message}`);
-            }
-        }
-
-        res.status(200).json({
-            success: true,
-            message: `Import completed. ${results.success} items imported successfully, ${results.failed} failed.`,
-            data: results
-        });
-
-    } catch (error) {
-        console.error('Error in bulk import:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to process bulk import',
             error: error.message
         });
     }

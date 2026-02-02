@@ -3,6 +3,7 @@ const router = express.Router();
 const { sequelize } = require('../config/database');
 const { QueryTypes } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth'); // ✅ FIXED: Added missing import
+const { trackAccess } = require('./recentlyAccessed');
 
 // Apply authentication to all protected routes
 const protectedRoutes = ['/generate', '/download/:id', '/delete/:id', '/:id'];
@@ -364,7 +365,7 @@ router.post('/generate', async (req, res) => {
 });
 
 // Get report by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', trackAccess('report'), async (req, res) => {
     try {
         const reports = await sequelize.query(`
             SELECT * FROM reports WHERE id = ?

@@ -3,6 +3,7 @@ const router = express.Router();
 const { Op } = require('sequelize');
 const { createNotification } = require('../utils/notificationService');
 const { authenticateToken } = require('../middleware/auth');
+const { trackAccess } = require('./recentlyAccessed');
 
 // Import models with error handling
 let Maintenance, Equipment, User;
@@ -283,7 +284,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET maintenance by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', trackAccess('maintenance'), async (req, res) => {
     try {
         const { id } = req.params;
         console.log(`🔧 Fetching maintenance record with ID: ${id}`);

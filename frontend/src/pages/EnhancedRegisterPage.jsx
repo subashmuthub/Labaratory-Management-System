@@ -18,7 +18,7 @@ function EnhancedRegisterPage() {
     const [loading, setLoading] = useState(false)
     const [agreeToTerms, setAgreeToTerms] = useState(false)
     const [showOTPModal, setShowOTPModal] = useState(false)
-    const { register, sendOTP, verifyOTP, registerWithOTP } = useAuth()
+    const { register, sendOTP, verifyOTP, resendOTP, registerWithOTP } = useAuth()
     const navigate = useNavigate()
     const location = useLocation()
 
@@ -120,7 +120,8 @@ function EnhancedRegisterPage() {
             const result = await sendOTP(formData.email, 'registration')
             
             if (result.success) {
-                // Show OTP modal for email verification
+                // Clear any previous errors and show OTP modal for email verification
+                setErrors({})
                 setShowOTPModal(true)
             } else {
                 setErrors({ submit: result.message || 'Failed to send verification code' })
@@ -133,18 +134,29 @@ function EnhancedRegisterPage() {
         }
     }
 
-    const handleOTPSuccess = async (result) => {
-        console.log('OTP verified successfully:', result)
+    const handleOTPSuccess = async (otp) => {
+        console.log('OTP entered:', otp)
         setLoading(true)
         
         try {
-            // Now complete the registration with OTP
+            // First verify the OTP with backend
+            const verifyResult = await verifyOTP(formData.email, otp)
+            
+            if (!verifyResult.success) {
+                setErrors({ otp: verifyResult.message || 'OTP verification failed' })
+                setLoading(false)
+                return
+            }
+            
+            console.log('OTP verified successfully:', verifyResult)
+            
+            // Now complete the registration
             const registrationResult = await registerWithOTP(
                 formData.name, 
                 formData.email, 
                 formData.password, 
                 formData.role, 
-                result.otp || result.data?.otp
+                otp
             )
             
             if (registrationResult.success) {
@@ -166,7 +178,7 @@ function EnhancedRegisterPage() {
 
     const handleOTPError = (error) => {
         console.error('OTP verification failed:', error)
-        setErrors({ submit: error || 'Email verification failed' })
+        setErrors({ otp: error || 'Email verification failed' })
     }
 
     return (
@@ -501,9 +513,12 @@ function EnhancedRegisterPage() {
                             onVerify={handleOTPSuccess}
                             onResend={async () => {
                                 try {
-                                    await sendOTP(formData.email, 'registration')
+                                    const result = await resendOTP(formData.email, 'registration')
+                                    if (!result.success) {
+                                        handleOTPError(result.message)
+                                    }
                                 } catch (error) {
-                                    handleOTPError(error.message)
+                                    handleOTPError(error.message || 'Failed to resend OTP')
                                 }
                             }}
                             loading={loading}

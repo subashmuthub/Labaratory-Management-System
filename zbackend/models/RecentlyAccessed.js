@@ -18,7 +18,7 @@ const RecentlyAccessed = sequelize.define('RecentlyAccessed', {
         onDelete: 'CASCADE'
     },
     item_type: {
-        type: DataTypes.ENUM('lab', 'equipment', 'booking', 'report'),
+        type: DataTypes.ENUM('equipment', 'lab', 'booking', 'maintenance', 'report', 'user'),
         allowNull: false
     },
     item_id: {
@@ -29,7 +29,15 @@ const RecentlyAccessed = sequelize.define('RecentlyAccessed', {
         type: DataTypes.STRING(255),
         allowNull: false
     },
-    accessed_at: {
+    item_description: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    access_count: {
+        type: DataTypes.INTEGER,
+        defaultValue: 1
+    },
+    last_accessed: {
         type: DataTypes.DATE,
         allowNull: false,
         defaultValue: DataTypes.NOW
@@ -39,13 +47,17 @@ const RecentlyAccessed = sequelize.define('RecentlyAccessed', {
     timestamps: true, // This will create created_at and updated_at
     indexes: [
         {
-            fields: ['user_id', 'accessed_at'],
+            fields: ['user_id', 'last_accessed'],
             name: 'idx_user_accessed'
         },
         {
             fields: ['user_id', 'item_type', 'item_id'],
             unique: true,
             name: 'unique_user_item'
+        },
+        {
+            fields: ['item_type'],
+            name: 'idx_item_type'
         }
     ]
 });

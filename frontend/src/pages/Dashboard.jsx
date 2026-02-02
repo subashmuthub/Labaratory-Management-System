@@ -44,6 +44,9 @@ export default function Dashboard() {
     const [showUserMenu, setShowUserMenu] = useState(false)
     const [showNotifications, setShowNotifications] = useState(false)
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+    const [showActivitiesModal, setShowActivitiesModal] = useState(false)
+    const [allActivities, setAllActivities] = useState([])
+    const [loadingActivities, setLoadingActivities] = useState(false)
 
     const { user, token, logout } = useAuth()
     const navigate = useNavigate()
@@ -402,6 +405,34 @@ export default function Dashboard() {
         } catch (error) {
             console.error('Error fetching recent activities:', error)
         }
+    }
+
+    const fetchAllActivities = async () => {
+        setLoadingActivities(true)
+        try {
+            const response = await fetch(`${API_BASE_URL}/activities/recent?limit=100`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+
+            if (response.ok) {
+                const result = await response.json()
+                if (result.success) {
+                    setAllActivities(result.data || [])
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching all activities:', error)
+        } finally {
+            setLoadingActivities(false)
+        }
+    }
+
+    const handleViewAllActivities = () => {
+        setShowActivitiesModal(true)
+        fetchAllActivities()
     }
 
     const fetchUpcomingBookings = async () => {
@@ -1138,8 +1169,8 @@ export default function Dashboard() {
                                 <div className="flex items-center justify-between mb-6">
                                     <h2 className="text-xl font-bold text-gray-900">Recent Activities</h2>
                                     <button
-                                        onClick={() => handleNavigation('/activities')}
-                                        className="text-sm text-blue-600 hover:text-blue-700"
+                                        onClick={handleViewAllActivities}
+                                        className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
                                     >
                                         View All
                                     </button>
@@ -1409,6 +1440,139 @@ export default function Dashboard() {
                         </div>
                     </div>
                 </main>
+
+                {/* Recent Activities Modal */}
+                {showActivitiesModal && (
+                    <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                        <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                            {/* Background overlay */}
+                            <div 
+                                className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" 
+                                aria-hidden="true"
+                                onClick={() => setShowActivitiesModal(false)}
+                            ></div>
+
+                            {/* Center modal */}
+                            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+                            {/* Modal panel */}
+                            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+                                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                                    {/* Modal Header */}
+                                    <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+                                        <h3 className="text-2xl font-bold text-gray-900 flex items-center" id="modal-title">
+                                            <svg className="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            All Recent Activities
+                                        </h3>
+                                        <button
+                                            onClick={() => setShowActivitiesModal(false)}
+                                            className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                                        >
+                                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    {/* Modal Body */}
+                                    <div className="max-h-[600px] overflow-y-auto">
+                                        {loadingActivities ? (
+                                            <div className="flex items-center justify-center py-12">
+                                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                                            </div>
+                                        ) : allActivities.length > 0 ? (
+                                            <div className="space-y-3">
+                                                {allActivities.map((activity, index) => (
+                                                    <div 
+                                                        key={activity.id || index} 
+                                                        className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                                                    >
+                                                        <div className="flex-shrink-0">
+                                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                                                activity.type === 'booking' ? 'bg-blue-100 text-blue-600' :
+                                                                activity.type === 'incident' ? 'bg-red-100 text-red-600' :
+                                                                activity.type === 'maintenance' ? 'bg-yellow-100 text-yellow-600' :
+                                                                activity.type === 'equipment' ? 'bg-purple-100 text-purple-600' :
+                                                                activity.type === 'lab' ? 'bg-green-100 text-green-600' :
+                                                                'bg-gray-100 text-gray-600'
+                                                            }`}>
+                                                                <span className="text-lg">
+                                                                    {activity.type === 'booking' && '📅'}
+                                                                    {activity.type === 'incident' && '⚠️'}
+                                                                    {activity.type === 'maintenance' && '🔧'}
+                                                                    {activity.type === 'equipment' && '📦'}
+                                                                    {activity.type === 'lab' && '🧪'}
+                                                                    {!['booking', 'incident', 'maintenance', 'equipment', 'lab'].includes(activity.type) && '✅'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-medium text-gray-900">
+                                                                {activity.description}
+                                                            </p>
+                                                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                                                    {activity.user_name}
+                                                                </span>
+                                                                <span className="text-xs text-gray-500">
+                                                                    {new Date(activity.created_at).toLocaleString('en-US', {
+                                                                        month: 'short',
+                                                                        day: 'numeric',
+                                                                        year: 'numeric',
+                                                                        hour: '2-digit',
+                                                                        minute: '2-digit'
+                                                                    })}
+                                                                </span>
+                                                                {activity.type && (
+                                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                                                        activity.type === 'booking' ? 'bg-blue-50 text-blue-700' :
+                                                                        activity.type === 'incident' ? 'bg-red-50 text-red-700' :
+                                                                        activity.type === 'maintenance' ? 'bg-yellow-50 text-yellow-700' :
+                                                                        activity.type === 'equipment' ? 'bg-purple-50 text-purple-700' :
+                                                                        activity.type === 'lab' ? 'bg-green-50 text-green-700' :
+                                                                        'bg-gray-50 text-gray-700'
+                                                                    }`}>
+                                                                        {activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-12">
+                                                <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                                <p className="text-gray-500 text-lg">No activities found</p>
+                                                <p className="text-gray-400 text-sm mt-2">Activities will appear here as you use the system</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Modal Footer */}
+                                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-gray-200">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowActivitiesModal(false)}
+                                        className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+                                    >
+                                        Close
+                                    </button>
+                                    {allActivities.length > 0 && (
+                                        <span className="mt-3 sm:mt-0 text-sm text-gray-500">
+                                            Showing {allActivities.length} {allActivities.length === 1 ? 'activity' : 'activities'}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     )

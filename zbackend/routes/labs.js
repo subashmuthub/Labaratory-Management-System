@@ -2,8 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Lab, User, Equipment, Booking } = require('../models');
 const { Op } = require('sequelize');
-const { authenticateToken } = require('../middleware/auth');
-const { createNotification } = require('../utils/notificationService');
+const { authenticateToken } = require('../middleware/auth');const { trackAccess } = require('./recentlyAccessed');const { createNotification } = require('../utils/notificationService');
 
 // GET lab statistics
 router.get('/stats', async (req, res) => {
@@ -262,7 +261,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 });
 
 // GET lab by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', trackAccess('lab'), async (req, res) => {
     try {
         const { id } = req.params;
 

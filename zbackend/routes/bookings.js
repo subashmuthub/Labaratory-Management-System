@@ -5,6 +5,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { Booking, Equipment, User, Lab } = require('../models');
 const { sequelize } = require('../config/database');
 const { createNotification } = require('../utils/notificationService');
+const { trackAccess } = require('./recentlyAccessed');
 
 router.use(authenticateToken);
 
@@ -452,7 +453,7 @@ router.post('/', async (req, res) => {
 });
 
 // GET booking by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', trackAccess('booking'), async (req, res) => {
     try {
         const booking = await Booking.findByPk(req.params.id, {
             include: [

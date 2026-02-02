@@ -397,14 +397,35 @@ const ExcelImportModal = ({ isOpen, onClose, onImportComplete, labs, token }) =>
 
             setUploadProgress(75)
 
-            const result = await response.json()
+            // Check if response has content before parsing JSON
+            let result = null
+            const contentType = response.headers.get('content-type')
+            
+            if (contentType && contentType.includes('application/json')) {
+                const text = await response.text()
+                if (text) {
+                    try {
+                        result = JSON.parse(text)
+                    } catch (parseError) {
+                        console.error('JSON parse error:', parseError)
+                        console.error('Response text:', text)
+                        throw new Error(`Server returned invalid JSON: ${text.substring(0, 100)}`)
+                    }
+                } else {
+                    throw new Error('Server returned empty response')
+                }
+            } else {
+                const text = await response.text()
+                throw new Error(`Server returned non-JSON response: ${text.substring(0, 100)}`)
+            }
+
             console.log('Import response:', result)
             console.log('Response status:', response.status)
             console.log('Response OK:', response.ok)
 
             setUploadProgress(100)
 
-            if (response.ok && result.success) {
+            if (response.ok && result && result.success) {
                 setSuccess(`Successfully imported ${result.data.success} equipment items!`)
                 if (result.data.failed > 0) {
                     setError(`${result.data.failed} items failed to import:\n${result.data.errors.join('\n')}`)
@@ -415,8 +436,8 @@ const ExcelImportModal = ({ isOpen, onClose, onImportComplete, labs, token }) =>
                     onImportComplete()
                 }, 1500)
             } else {
-                const errorMsg = result.message || 'Import failed. Please try again.'
-                const detailedErrors = result.data?.errors ? `\n\nDetails:\n${result.data.errors.slice(0, 5).join('\n')}` : ''
+                const errorMsg = result?.message || 'Import failed. Please try again.'
+                const detailedErrors = result?.data?.errors ? `\n\nDetails:\n${result.data.errors.slice(0, 5).join('\n')}` : ''
                 setError(errorMsg + detailedErrors)
                 console.error('Import failed:', result)
             }

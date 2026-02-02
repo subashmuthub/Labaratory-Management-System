@@ -231,12 +231,12 @@ export const AuthProvider = ({ children }) => {
     };
 
     // Resend OTP
-    const resendOTP = async (email, purpose = 'verification') => {
+    const resendOTP = async (email, purpose = 'registration') => {
         try {
             console.log('Resending OTP to:', email);
 
-            // Use the OTP resend endpoint consistently
-            const endpoint = '/api/otp/resend';
+            // Use the Enhanced Auth resend endpoint
+            const endpoint = '/api/auth/resend-otp';
 
             const response = await fetch(`${apiConfig.baseURL}${endpoint}`, {
                 method: 'POST',
