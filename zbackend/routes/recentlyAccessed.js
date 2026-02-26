@@ -1,185 +1,21 @@
-// Recently Accessed Items Tracking System
 const express = require('express');
-const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
-const { sequelize } = require('../config/database');
-const { DataTypes } = require('sequelize');
+const recentlyAccessedService = require('../services/recentlyAccessedService');
 
-// Define RecentlyAccessed model
-const RecentlyAccessed = sequelize.define('RecentlyAccessed', {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-    },
-    user_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: 'users',
-            key: 'id'
-        }
-    },
-    item_type: {
-        type: DataTypes.ENUM('equipment', 'lab', 'booking', 'maintenance', 'report', 'user'),
-        allowNull: false
-    },
-    item_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
-    item_name: {
-        type: DataTypes.STRING(255),
-        allowNull: false
-    },
-    item_description: {
-        type: DataTypes.TEXT,
-        allowNull: true
-    },
-    access_count: {
-        type: DataTypes.INTEGER,
-        defaultValue: 1
-    },
-    last_accessed: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
-    }
-}, {
-    tableName: 'recently_accessed',
-    timestamps: true,
-    indexes: [
-        { fields: ['user_id', 'item_type', 'item_id'], unique: true },
-        { fields: ['user_id', 'last_accessed'] },
-        { fields: ['item_type'] }
-    ]
-});
+const router = express.Router();
 
-// Sync the model (create table if it doesn't exist)
-// RecentlyAccessed.sync(); // Disabled for Docker - tables created by initialization scripts
+// Apply authentication to all routes
+router.use(authenticateToken);
 
-// Middleware to track item access
-const trackAccess = (itemType) => {
-    return async (req, res, next) => {
-        try {
-            if (req.user && req.params.id) {
-                const itemId = req.params.id;
-                const userId = req.user.id;
-                
-                // Get item details based on type
-                let itemName = `${itemType} #${itemId}`;
-                let itemDescription = '';
-                
-                // Try to get more descriptive name based on item type
-                try {
-                    const { Equipment, Lab, User, Booking, Maintenance } = require('../models');
-                    let item;
-                    
-                    switch (itemType) {
-                        case 'equipment':
-                            item = await Equipment.findByPk(itemId);
-                            if (item) {
-                                itemName = item.name;
-                                itemDescription = item.description || `${item.category} equipment`;
-                            }
-                            break;
-                        case 'lab':
-                            item = await Lab.findByPk(itemId);
-                            if (item) {
-                                itemName = item.name;
-                                itemDescription = item.description || `${item.lab_type} lab`;
-                            }
-                            break;
-                        case 'user':
-                            item = await User.findByPk(itemId);
-                            if (item) {
-                                itemName = item.name;
-                                itemDescription = `${item.role} - ${item.email}`;
-                            }
-                            break;
-                    }
-                } catch (error) {
-                    console.log('Could not fetch item details:', error.message);
-                }
-                
-                // Update or create recent access record
-                const [recentItem, created] = await RecentlyAccessed.findOrCreate({
-                    where: {
-                        user_id: userId,
-                        item_type: itemType,
-                        item_id: itemId
-                    },
-                    defaults: {
-                        item_name: itemName,
-                        item_description: itemDescription,
-                        access_count: 1,
-                        last_accessed: new Date()
-                    }
-                });
-                
-                if (!created) {
-                    await recentItem.update({
-                        item_name: itemName,
-                        item_description: itemDescription,
-                        access_count: recentItem.access_count + 1,
-                        last_accessed: new Date()
-                    });
-                }
-            }
-        } catch (error) {
-            console.log('Access tracking error:', error.message);
-        }
-        
-        next();
-    };
-};
-
-// Get recently accessed items for current user
-router.get('/', authenticateToken, async (req, res) => {
+// GET recently accessed items
+router.get('/', async (req, res) => {
     try {
-        const { limit = 10, type } = req.query;
-        const userId = req.user.id;
-        
-        const whereClause = { user_id: userId };
-        if (type) {
-            whereClause.item_type = type;
-        }
-        
-        const recentItems = await RecentlyAccessed.findAll({
-            where: whereClause,
-            order: [['last_accessed', 'DESC']],
-            limit: parseInt(limit)
-        });
-        
-        // Group by item type for better organization
-        const groupedItems = recentItems.reduce((acc, item) => {
-            if (!acc[item.item_type]) {
-                acc[item.item_type] = [];
-            }
-            acc[item.item_type].push({
-                id: item.item_id,
-                name: item.item_name,
-                description: item.item_description,
-                accessCount: item.access_count,
-                lastAccessed: item.last_accessed,
-                type: item.item_type
-            });
-            return acc;
-        }, {});
+        const { limit = 10 } = req.query;
+        const items = await recentlyAccessedService.getRecentlyAccessed(req.user.id, limit);
         
         res.json({
             success: true,
-            data: {
-                recentItems: recentItems.map(item => ({
-                    id: item.item_id,
-                    name: item.item_name,
-                    description: item.item_description,
-                    type: item.item_type,
-                    accessCount: item.access_count,
-                    lastAccessed: item.last_accessed
-                })),
-                groupedItems,
-                totalCount: recentItems.length
-            }
+            data: items
         });
     } catch (error) {
         console.error('Error fetching recently accessed items:', error);
@@ -191,114 +27,69 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 });
 
-// Get frequently accessed items
-router.get('/frequent', authenticateToken, async (req, res) => {
+// GET recently accessed items by type
+router.get('/type/:type', async (req, res) => {
     try {
         const { limit = 10 } = req.query;
-        const userId = req.user.id;
-        
-        const frequentItems = await RecentlyAccessed.findAll({
-            where: { user_id: userId },
-            order: [['access_count', 'DESC'], ['last_accessed', 'DESC']],
-            limit: parseInt(limit)
-        });
+        const items = await recentlyAccessedService.getByType(req.user.id, req.params.type, limit);
         
         res.json({
             success: true,
-            data: {
-                frequentItems: frequentItems.map(item => ({
-                    id: item.item_id,
-                    name: item.item_name,
-                    description: item.item_description,
-                    type: item.item_type,
-                    accessCount: item.access_count,
-                    lastAccessed: item.last_accessed
-                }))
-            }
+            data: items
         });
     } catch (error) {
-        console.error('Error fetching frequently accessed items:', error);
+        console.error('Error fetching recently accessed items by type:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to fetch frequently accessed items',
+            message: 'Failed to fetch recently accessed items',
             error: error.message
         });
     }
 });
 
-// Clear recent access history
-router.delete('/clear', authenticateToken, async (req, res) => {
+// GET most accessed items
+router.get('/most-accessed', async (req, res) => {
     try {
-        const userId = req.user.id;
-        const { type } = req.query;
-        
-        const whereClause = { user_id: userId };
-        if (type) {
-            whereClause.item_type = type;
-        }
-        
-        const deletedCount = await RecentlyAccessed.destroy({
-            where: whereClause
-        });
+        const { limit = 5 } = req.query;
+        const items = await recentlyAccessedService.getMostAccessed(req.user.id, limit);
         
         res.json({
             success: true,
-            message: `Cleared ${deletedCount} recent access records`,
-            deletedCount
+            data: items
         });
     } catch (error) {
-        console.error('Error clearing recent access:', error);
+        console.error('Error fetching most accessed items:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to clear recent access history',
+            message: 'Failed to fetch most accessed items',
             error: error.message
         });
     }
 });
 
-// Manually track an item access
-router.post('/track', authenticateToken, async (req, res) => {
+// POST track item access
+router.post('/track', async (req, res) => {
     try {
-        const { itemType, itemId, itemName, itemDescription } = req.body;
-        const userId = req.user.id;
+        const { item_type, item_id, item_name, item_description } = req.body;
         
-        if (!itemType || !itemId) {
+        if (!item_type || !item_id || !item_name) {
             return res.status(400).json({
                 success: false,
-                message: 'itemType and itemId are required'
+                message: 'Missing required fields: item_type, item_id, item_name'
             });
         }
         
-        const [recentItem, created] = await RecentlyAccessed.findOrCreate({
-            where: {
-                user_id: userId,
-                item_type: itemType,
-                item_id: itemId
-            },
-            defaults: {
-                item_name: itemName || `${itemType} #${itemId}`,
-                item_description: itemDescription || '',
-                access_count: 1,
-                last_accessed: new Date()
-            }
-        });
-        
-        if (!created) {
-            await recentItem.update({
-                access_count: recentItem.access_count + 1,
-                last_accessed: new Date()
-            });
-        }
+        const record = await recentlyAccessedService.trackAccess(
+            req.user.id,
+            item_type,
+            item_id,
+            item_name,
+            item_description
+        );
         
         res.json({
             success: true,
-            message: 'Access tracked successfully',
-            data: {
-                itemId: recentItem.item_id,
-                itemType: recentItem.item_type,
-                accessCount: recentItem.access_count,
-                created
-            }
+            data: record
         });
     } catch (error) {
         console.error('Error tracking access:', error);
@@ -310,7 +101,79 @@ router.post('/track', authenticateToken, async (req, res) => {
     }
 });
 
-// Export both router and middleware
+// DELETE clear old records
+router.delete('/clear/old', async (req, res) => {
+    try {
+        const { days = 30 } = req.query;
+        const deleted = await recentlyAccessedService.clearOldRecords(req.user.id, days);
+        
+        res.json({
+            success: true,
+            message: `Cleared ${deleted} old records`,
+            deleted
+        });
+    } catch (error) {
+        console.error('Error clearing old records:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to clear old records',
+            error: error.message
+        });
+    }
+});
+
+// DELETE clear all records
+router.delete('/clear/all', async (req, res) => {
+    try {
+        const deleted = await recentlyAccessedService.clearAll(req.user.id);
+        
+        res.json({
+            success: true,
+            message: `Cleared all recently accessed records`,
+            deleted
+        });
+    } catch (error) {
+        console.error('Error clearing all records:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to clear records',
+            error: error.message
+        });
+    }
+});
+
+// Middleware to track item access - exported for use in other routes
+const trackAccess = (req, res, next) => {
+    (async () => {
+        try {
+            if (req.user && req.params.id) {
+                const itemId = req.params.id;
+                const userId = req.user.id;
+                
+                // Determine item type from route path
+                const path = req.baseUrl + req.path;
+                let itemType = 'equipment'; // default
+                
+                if (path.includes('/labs')) itemType = 'lab';
+                else if (path.includes('/bookings')) itemType = 'booking';
+                else if (path.includes('/maintenance')) itemType = 'maintenance';
+                else if (path.includes('/users')) itemType = 'user';
+                else if (path.includes('/equipment')) itemType = 'equipment';
+                
+                // Get item details
+                const { itemName, itemDescription } = await recentlyAccessedService.getItemDetailsForTracking(itemType, itemId);
+                
+                // Track access in background (don't wait)
+                recentlyAccessedService.trackAccess(userId, itemType, itemId, itemName, itemDescription)
+                    .catch(err => console.error('Background access tracking error:', err));
+            }
+        } catch (error) {
+            console.error('Error in trackAccess middleware:', error);
+        }
+        next();
+    })();
+};
+
 module.exports = {
     router,
     trackAccess

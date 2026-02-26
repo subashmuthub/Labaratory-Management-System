@@ -639,6 +639,14 @@ router.post('/register-with-otp', registerValidation, async (req, res) => {
         // Generate token
         const token = generateToken(newUser);
 
+        // Set HTTP-only cookie
+        res.cookie('authToken', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        });
+
         const userData = {
             id: newUser.id,
             name: newUser.name,
@@ -658,8 +666,7 @@ router.post('/register-with-otp', registerValidation, async (req, res) => {
             success: true,
             message: 'User registered successfully',
             data: {
-                user: userData,
-                token: token
+                user: userData
             }
         });
 
@@ -728,6 +735,14 @@ router.post('/login-with-otp', async (req, res) => {
         // Generate token
         const token = generateToken(user);
 
+        // Set HTTP-only cookie
+        res.cookie('authToken', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        });
+
         const userData = {
             id: user.id,
             name: user.name,
@@ -743,8 +758,7 @@ router.post('/login-with-otp', async (req, res) => {
             success: true,
             message: 'Login successful',
             data: {
-                user: userData,
-                token: token
+                user: userData
             }
         });
 
@@ -898,9 +912,16 @@ router.get('/oauth/google/callback', async (req, res) => {
         console.log('📊 OAuth processing result:', { success: result.success, hasToken: !!result.data?.token });
 
         if (result.success) {
-            // Redirect to frontend with token
+            // Set HTTP-only cookie
+            res.cookie('authToken', result.data.token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                maxAge: 24 * 60 * 60 * 1000 // 24 hours
+            });
+            // Redirect to frontend
             const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-            const redirectUrl = `${clientUrl}/oauth/success?token=${result.data.token}`;
+            const redirectUrl = `${clientUrl}/oauth/success`;
             console.log('✅ OAuth successful, redirecting to frontend');
             res.redirect(redirectUrl);
         } else {
@@ -931,8 +952,15 @@ router.get('/oauth/github/callback', async (req, res) => {
         const result = await OAuthService.processGitHubOAuth(code);
 
         if (result.success) {
-            // Redirect to frontend with token
-            const redirectUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/oauth/success?token=${result.data.token}`;
+            // Set HTTP-only cookie
+            res.cookie('authToken', result.data.token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                maxAge: 24 * 60 * 60 * 1000 // 24 hours
+            });
+            // Redirect to frontend
+            const redirectUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/oauth/success`;
             res.redirect(redirectUrl);
         } else {
             res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/login?error=${encodeURIComponent(result.message)}`);
@@ -994,6 +1022,14 @@ router.post('/login', loginEmailValidation, async (req, res) => {
         // Generate token
         const token = generateToken(user);
 
+        // Set HTTP-only cookie
+        res.cookie('authToken', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production', // true in production
+            sameSite: 'lax',
+            maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        });
+
         const userData = {
             id: user.id,
             name: user.name,
@@ -1009,8 +1045,7 @@ router.post('/login', loginEmailValidation, async (req, res) => {
             success: true,
             message: 'Login successful',
             data: {
-                user: userData,
-                token: token
+                user: userData
             }
         });
 
@@ -1024,10 +1059,10 @@ router.post('/login', loginEmailValidation, async (req, res) => {
 });
 
 // @route   GET /api/auth/verify
-// @desc    Verify JWT token validity
+// @desc    Verify JWT token validity from cookie
 router.get('/verify', async (req, res) => {
     try {
-        const token = req.headers.authorization?.split(' ')[1];
+        const token = req.cookies?.authToken;
         
         if (!token) {
             return res.status(401).json({
@@ -1132,12 +1167,129 @@ router.post('/forgot-password', async (req, res) => {
 });
 
 // @route   POST /api/auth/logout
-// @desc    Logout user (client-side token removal)
+// @desc    Logout user and clear auth cookie
 router.post('/logout', (req, res) => {
+    res.clearCookie('authToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+    });
     res.json({
         success: true,
         message: 'Logged out successfully'
     });
+});
+
+// Middleware to authenticate token
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({
+            success: false,
+            message: 'Access token required'
+        });
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) {
+            return res.status(403).json({
+                success: false,
+                message: 'Invalid or expired token'
+            });
+        }
+        req.user = user;
+        next();
+    });
+};
+
+// @route   GET /api/auth/profile
+// @desc    Get current user profile
+router.get('/profile', authenticateToken, async (req, res) => {
+    try {
+        const user = await User.findByPk(req.user.userId, {
+            attributes: ['id', 'name', 'email', 'role', 'student_id', 'department', 'phone', 'bio', 'position', 'avatar_url', 'is_active', 'last_login', 'created_at']
+        });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: user
+        });
+    } catch (error) {
+        console.error('Error fetching profile:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch profile',
+            error: error.message
+        });
+    }
+});
+
+// @route   PUT /api/auth/profile
+// @desc    Update current user profile
+router.put('/profile', authenticateToken, async (req, res) => {
+    try {
+        const user = await User.findByPk(req.user.userId);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // Only allow updating certain fields
+        const allowedFields = ['name', 'student_id', 'department', 'phone', 'bio', 'position', 'avatar_url'];
+        const updates = {};
+        
+        for (const field of allowedFields) {
+            if (req.body[field] !== undefined) {
+                updates[field] = req.body[field];
+            }
+        }
+
+        // Handle password update separately
+        if (req.body.password) {
+            updates.password = await bcrypt.hash(req.body.password, 10);
+        }
+
+        await user.update(updates);
+
+        const updatedUser = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            student_id: user.student_id,
+            department: user.department,
+            phone: user.phone,
+            bio: user.bio,
+            position: user.position,
+            avatar_url: user.avatar_url
+        };
+
+        console.log('✅ Profile updated successfully for:', req.user.email || user.email);
+        res.json({
+            success: true,
+            message: 'Profile updated successfully',
+            data: updatedUser
+        });
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update profile',
+            error: error.message
+        });
+    }
 });
 
 module.exports = router;

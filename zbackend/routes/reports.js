@@ -365,7 +365,7 @@ router.post('/generate', async (req, res) => {
 });
 
 // Get report by ID
-router.get('/:id', trackAccess('report'), async (req, res) => {
+router.get('/:id', trackAccess, async (req, res) => {
     try {
         const reports = await sequelize.query(`
             SELECT * FROM reports WHERE id = ?

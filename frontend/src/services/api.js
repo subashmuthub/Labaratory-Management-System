@@ -1,15 +1,13 @@
-// src/services/api.js - UPDATED VERSION
+// src/services/api.js - Cookie-Based Authentication
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 const apiCall = async (endpoint, options = {}) => {
     try {
-        const token = localStorage.getItem('token');
-
         const config = {
             headers: {
                 'Content-Type': 'application/json',
-                ...(token && { Authorization: `Bearer ${token}` }),
             },
+            credentials: 'include', // Include cookies in requests
             ...options,
         };
 
@@ -46,11 +44,8 @@ const apiCall = async (endpoint, options = {}) => {
 // Download file helper function
 const downloadFile = async (endpoint, filename) => {
     try {
-        const token = localStorage.getItem('token');
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            headers: {
-                ...(token && { Authorization: `Bearer ${token}` }),
-            },
+            credentials: 'include', // Include cookies in requests
         });
 
         if (!response.ok) {
@@ -134,12 +129,12 @@ export const usersAPI = {
 
     // Get current user profile
     getProfile: async () => {
-        const response = await apiCall('/users/profile');
+        const response = await apiCall('/auth/profile');
         return response; // Backend returns { success: true, data: user }
     },
 
     // Update current user profile
-    updateProfile: (profileData) => apiCall('/users/profile', {
+    updateProfile: (profileData) => apiCall('/auth/profile', {
         method: 'PUT',
         body: JSON.stringify(profileData),
     }),
@@ -189,6 +184,13 @@ export const authAPI = {
 
 // ✅ UPDATED: Equipment API - Fixed to match backend response format
 export const equipmentAPI = {
+    getAll: async (params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        const response = await apiCall(`/equipment${queryString ? '?' + queryString : ''}`);
+        // Backend returns { success: true, data: { equipment: [...], pagination: {...} } }
+        return response.data || response;
+    },
+
     getEquipment: async (params = {}) => {
         const queryString = new URLSearchParams(params).toString();
         const response = await apiCall(`/equipment${queryString ? '?' + queryString : ''}`);
@@ -197,8 +199,13 @@ export const equipmentAPI = {
     },
     
     getEquipmentById: (id) => apiCall(`/equipment/${id}`),
+    getById: (id) => apiCall(`/equipment/${id}`),
     
     createEquipment: (data) => apiCall('/equipment', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    }),
+    create: (data) => apiCall('/equipment', {
         method: 'POST',
         body: JSON.stringify(data),
     }),
@@ -207,8 +214,15 @@ export const equipmentAPI = {
         method: 'PUT',
         body: JSON.stringify(data),
     }),
+    update: (id, data) => apiCall(`/equipment/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    }),
     
     deleteEquipment: (id) => apiCall(`/equipment/${id}`, {
+        method: 'DELETE',
+    }),
+    delete: (id) => apiCall(`/equipment/${id}`, {
         method: 'DELETE',
     }),
     

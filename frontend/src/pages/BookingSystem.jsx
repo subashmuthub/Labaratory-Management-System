@@ -257,8 +257,15 @@ function BookingSystem() {
                 const bookingsResponse = await fetch(bookingsUrl, { headers })
                 if (bookingsResponse.ok) {
                     const bookingsData = await bookingsResponse.json()
-                    console.log('📅 Bookings loaded:', bookingsData.data?.bookings?.length || 0, 'bookings')
-                    setBookings(bookingsData.data?.bookings || [])
+                    console.log('📅 Bookings API response:', bookingsData)
+                    console.log('📅 Bookings data:', bookingsData.data)
+                    console.log('📅 Bookings count:', Array.isArray(bookingsData.data) ? bookingsData.data.length : 0)
+                    
+                    // Backend returns { success: true, data: [...bookings], pagination: {...} }
+                    // So bookingsData.data is already the array of bookings
+                    const bookingsArray = Array.isArray(bookingsData.data) ? bookingsData.data : []
+                    setBookings(bookingsArray)
+                    console.log('📅 Bookings set:', bookingsArray.length, 'bookings')
                 } else {
                     console.error('Failed to fetch bookings:', bookingsResponse.status)
                     const errorData = await bookingsResponse.json()
@@ -373,9 +380,27 @@ function BookingSystem() {
 
             const data = await response.json()
 
-            if (response.ok) {
-                // Add new booking to the list
-                setBookings([data.data.booking, ...bookings])
+            if (response.ok && data.success) {
+                // Refresh bookings list instead of manually adding
+                const bookingsUrl = user?.role === 'admin' 
+                    ? `${API_BASE_URL}/bookings` 
+                    : `${API_BASE_URL}/bookings?my_bookings=true`
+                
+                const refreshResponse = await fetch(bookingsUrl, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                
+                if (refreshResponse.ok) {
+                    const refreshData = await refreshResponse.json()
+                    // Backend returns { success: true, data: [...bookings], pagination: {...} }
+                    const bookingsArray = Array.isArray(refreshData.data) ? refreshData.data : []
+                    setBookings(bookingsArray)
+                    console.log('📅 Bookings refreshed:', bookingsArray.length, 'bookings')
+                }
+                
                 setShowBookingForm(false)
                 setNewBooking({
                     booking_type: 'lab',

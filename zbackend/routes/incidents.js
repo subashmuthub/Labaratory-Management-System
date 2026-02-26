@@ -1,10 +1,9 @@
 const express = require('express');
-const router = express.Router();
-const { authenticateToken } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
-const { Op } = require('sequelize');
-const { Incident, User, Equipment } = require('../models'); // ✅ FIXED: Import from models
-const { createNotification } = require('../utils/notificationService');
+const { authenticateToken } = require('../middleware/auth');
+const incidentService = require('../services/incidentService');
+
+const router = express.Router();
 
 // Validation middleware
 const validateIncident = [
@@ -29,10 +28,10 @@ router.get('/test', (req, res) => {
 // Apply authentication to all routes below
 router.use(authenticateToken);
 
-// ✅ FIXED: Add simple stats route that frontend might expect
+// GET incident statistics
 router.get('/stats', async (req, res) => {
     try {
-        const stats = await Incident.getStats();
+        const stats = await incidentService.getStats();
         res.json({
             success: true,
             data: stats
@@ -47,10 +46,10 @@ router.get('/stats', async (req, res) => {
     }
 });
 
-// Get incident statistics (alternative endpoint)
+// GET incident statistics (alternative endpoint)
 router.get('/stats/overview', async (req, res) => {
     try {
-        const stats = await Incident.getStats();
+        const stats = await incidentService.getStats();
         res.json({
             success: true,
             data: stats
@@ -65,129 +64,56 @@ router.get('/stats/overview', async (req, res) => {
     }
 });
 
-// Get all incidents
-router.get('/', async (req, res) => {
+// GET recent incidents
+router.get('/recent', async (req, res) => {
     try {
-        const {
-            status,
-            priority,
-            category,
-            assigned_to,
-            reported_by,
-            equipment_id,
-            page = 1,
-            limit = 100,
-            search
-        } = req.query;
-
-        console.log('🔍 Fetching incidents for user:', req.user.email, 'Role:', req.user.role);
-
-        // Build where clause
-        let whereClause = {};
-
-        if (status && status !== 'all') whereClause.status = status;
-        if (priority && priority !== 'all') whereClause.priority = priority;
-        if (category && category !== 'all') whereClause.category = category;
-        if (assigned_to) whereClause.assigned_to = assigned_to;
-        if (reported_by) whereClause.reported_by = reported_by;
-        if (equipment_id) whereClause.equipment_id = equipment_id;
-
-        // Search functionality
-        if (search) {
-            whereClause[Op.or] = [
-                { title: { [Op.like]: `%${search}%` } },
-                { description: { [Op.like]: `%${search}%` } },
-                { location: { [Op.like]: `%${search}%` } }
-            ];
-        }
-
-        // ✅ FIXED: Role-based filtering with correct user ID
-        const userId = req.user.userId || req.user.id; // Handle both possible field names
-        
-        if (req.user.role === 'student' || req.user.role === 'researcher') {
-            const roleFilter = {
-                [Op.or]: [
-                    { reported_by: userId },
-                    { assigned_to: userId }
-                ]
-            };
-            
-            if (whereClause[Op.or]) {
-                whereClause[Op.and] = [
-                    { [Op.or]: whereClause[Op.or] },
-                    roleFilter
-                ];
-                delete whereClause[Op.or];
-            } else {
-                whereClause = { ...whereClause, ...roleFilter };
-            }
-        }
-
-        const offset = (page - 1) * limit;
-
-        // ✅ FIXED: Include associations for complete data
-        let incidents;
-        try {
-            const { rows, count: total } = await Incident.findAndCountAll({
-                where: whereClause,
-                include: [
-                    {
-                        model: User,
-                        as: 'incidentReporter', // ✅ FIXED: Use correct alias from models
-                        attributes: ['id', 'name', 'email'],
-                        required: false
-                    },
-                    {
-                        model: User,
-                        as: 'incidentAssignee', // ✅ FIXED: Use correct alias from models
-                        attributes: ['id', 'name', 'email'],
-                        required: false
-                    },
-                    {
-                        model: User,
-                        as: 'incidentResolver', // ✅ FIXED: Use correct alias from models
-                        attributes: ['id', 'name', 'email'],
-                        required: false
-                    },
-                    {
-                        model: Equipment,
-                        as: 'relatedEquipment', // ✅ FIXED: Use correct alias from models
-                        attributes: ['id', 'name', 'category', 'status'],
-                        required: false
-                    }
-                ],
-                limit: parseInt(limit),
-                offset: offset,
-                order: [['created_at', 'DESC']]
-            });
-
-            incidents = { rows, total };
-        } catch (associationError) {
-            console.log('⚠️ Association error, fetching without includes:', associationError.message);
-            // Fallback without associations
-            const { rows, count: total } = await Incident.findAndCountAll({
-                where: whereClause,
-                limit: parseInt(limit),
-                offset: offset,
-                order: [['created_at', 'DESC']]
-            });
-            incidents = { rows, total };
-        }
-
-        console.log(`✅ Found ${incidents.total} incidents`);
-
+        const limit = parseInt(req.query.limit) || 10;
+        const incidents = await incidentService.getRecentIncidents(limit);
         res.json({
             success: true,
-            data: incidents.rows,
-            pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
-                total: incidents.total,
-                pages: Math.ceil(incidents.total / limit)
-            }
+            data: incidents
         });
     } catch (error) {
-        console.error('💥 Error fetching incidents:', error);
+        console.error('Error fetching recent incidents:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch recent incidents',
+            error: error.message
+        });
+    }
+});
+
+// GET critical incidents
+router.get('/critical', async (req, res) => {
+    try {
+        const incidents = await incidentService.getCriticalIncidents();
+        res.json({
+            success: true,
+            data: incidents
+        });
+    } catch (error) {
+        console.error('Error fetching critical incidents:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch critical incidents',
+            error: error.message
+        });
+    }
+});
+
+// GET all incidents
+router.get('/', async (req, res) => {
+    try {
+        console.log('🔍 Fetching incidents for user:', req.user.email, 'Role:', req.user.role);
+        
+        const result = await incidentService.getAllIncidents(req.query);
+        res.json({
+            success: true,
+            data: result.incidents,
+            pagination: result.pagination
+        });
+    } catch (error) {
+        console.error('Error fetching incidents:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to fetch incidents',
@@ -196,64 +122,22 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Get single incident
+// GET incident by ID
 router.get('/:id', async (req, res) => {
     try {
-        let incident;
-        
-        try {
-            incident = await Incident.findByPk(req.params.id, {
-                include: [
-                    {
-                        model: User,
-                        as: 'incidentReporter',
-                        attributes: ['id', 'name', 'email'],
-                        required: false
-                    },
-                    {
-                        model: User,
-                        as: 'incidentAssignee',
-                        attributes: ['id', 'name', 'email'],
-                        required: false
-                    },
-                    {
-                        model: Equipment,
-                        as: 'relatedEquipment',
-                        attributes: ['id', 'name', 'category'],
-                        required: false
-                    }
-                ]
-            });
-        } catch (associationError) {
-            console.log('⚠️ Association error, fetching without includes');
-            incident = await Incident.findByPk(req.params.id);
-        }
-
-        if (!incident) {
-            return res.status(404).json({
-                success: false,
-                message: 'Incident not found'
-            });
-        }
-
-        // ✅ FIXED: Check permissions with correct user ID
-        const userId = req.user.userId || req.user.id;
-        
-        if ((req.user.role === 'student' || req.user.role === 'researcher') && 
-            incident.reported_by !== userId && 
-            incident.assigned_to !== userId) {
-            return res.status(403).json({
-                success: false,
-                message: 'Access denied'
-            });
-        }
-
+        const incident = await incidentService.getIncidentById(req.params.id);
         res.json({
             success: true,
             data: incident
         });
     } catch (error) {
-        console.error('💥 Error fetching incident:', error);
+        console.error('Error fetching incident:', error);
+        if (error.message === 'Incident not found') {
+            return res.status(404).json({
+                success: false,
+                message: error.message
+            });
+        }
         res.status(500).json({
             success: false,
             message: 'Failed to fetch incident',
@@ -262,12 +146,11 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Create new incident
+// POST create new incident
 router.post('/', validateIncident, async (req, res) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
-            console.log('❌ Validation errors:', errors.array());
             return res.status(400).json({
                 success: false,
                 message: 'Validation failed',
@@ -275,71 +158,23 @@ router.post('/', validateIncident, async (req, res) => {
             });
         }
 
-        console.log('📝 Creating incident with data:', req.body);
-        console.log('👤 User creating incident:', req.user);
-
-        // ✅ FIXED: Use correct user ID field
-        const userId = req.user.userId || req.user.id;
-
-        const incidentData = {
-            title: req.body.title.trim(),
-            description: req.body.description.trim(),
-            priority: req.body.priority || 'medium',
-            category: req.body.category || 'malfunction',
-            location: req.body.location?.trim() || null,
-            equipment_id: req.body.equipment_id ? parseInt(req.body.equipment_id) : null,
-            reported_by: userId,
-            assigned_to: null
-        };
-
-        // Only admins and teachers can assign incidents
-        if (req.body.assigned_to && ['admin', 'teacher'].includes(req.user.role)) {
-            incidentData.assigned_to = parseInt(req.body.assigned_to);
-        }
-
-        console.log('💾 Final incident data:', incidentData);
-
-        const incident = await Incident.create(incidentData);
-
-        console.log('✅ Incident created successfully:', incident.id);
-
-        // Create notification for incident
-        try {
-            await createNotification({
-                user_id: userId,
-                type: 'incident',
-                title: 'Incident Reported',
-                message: `New ${incidentData.priority} priority incident "${incidentData.title}" has been reported.`,
-                metadata: {
-                    incident_id: incident.id,
-                    incident_title: incidentData.title,
-                    priority: incidentData.priority,
-                    category: incidentData.category,
-                    equipment_id: incidentData.equipment_id,
-                    location: incidentData.location
-                }
-            });
-            console.log('📧 Incident notification created for:', incidentData.title);
-        } catch (notifError) {
-            console.error('⚠️ Failed to create incident notification:', notifError.message);
-        }
-
+        const incident = await incidentService.createIncident(req.body, req.user.userId);
         res.status(201).json({
             success: true,
-            data: incident,
-            message: 'Incident reported successfully'
+            message: 'Incident reported successfully',
+            data: incident
         });
     } catch (error) {
-        console.error('💥 Error creating incident:', error);
+        console.error('Error creating incident:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to create incident',
+            message: error.message || 'Failed to create incident',
             error: error.message
         });
     }
 });
 
-// Update incident
+// PUT update incident
 router.put('/:id', validateIncident, async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -351,50 +186,20 @@ router.put('/:id', validateIncident, async (req, res) => {
             });
         }
 
-        const incident = await Incident.findByPk(req.params.id);
-        if (!incident) {
-            return res.status(404).json({
-                success: false,
-                message: 'Incident not found'
-            });
-        }
-
-        // ✅ FIXED: Check permissions with correct user ID
-        const userId = req.user.userId || req.user.id;
-        const canEdit = req.user.role === 'admin' || 
-                       req.user.role === 'teacher' || 
-                       incident.reported_by === userId;
-
-        if (!canEdit) {
-            return res.status(403).json({
-                success: false,
-                message: 'Access denied'
-            });
-        }
-
-        const updateData = {
-            title: req.body.title.trim(),
-            description: req.body.description.trim(),
-            priority: req.body.priority,
-            category: req.body.category,
-            location: req.body.location?.trim() || null,
-            equipment_id: req.body.equipment_id ? parseInt(req.body.equipment_id) : null
-        };
-
-        // Only admins and teachers can change assignment
-        if (req.body.assigned_to !== undefined && ['admin', 'teacher'].includes(req.user.role)) {
-            updateData.assigned_to = req.body.assigned_to ? parseInt(req.body.assigned_to) : null;
-        }
-
-        await incident.update(updateData);
-
+        const incident = await incidentService.updateIncident(req.params.id, req.body, req.user.userId);
         res.json({
             success: true,
-            data: incident,
-            message: 'Incident updated successfully'
+            message: 'Incident updated successfully',
+            data: incident
         });
     } catch (error) {
-        console.error('💥 Error updating incident:', error);
+        console.error('Error updating incident:', error);
+        if (error.message === 'Incident not found') {
+            return res.status(404).json({
+                success: false,
+                message: error.message
+            });
+        }
         res.status(500).json({
             success: false,
             message: 'Failed to update incident',
@@ -403,140 +208,22 @@ router.put('/:id', validateIncident, async (req, res) => {
     }
 });
 
-// Update incident status
-router.patch('/:id/status', async (req, res) => {
-    try {
-        const { status, resolution_notes } = req.body;
-        
-        if (!['open', 'in_progress', 'resolved', 'closed'].includes(status)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid status'
-            });
-        }
-
-        const incident = await Incident.findByPk(req.params.id);
-        if (!incident) {
-            return res.status(404).json({
-                success: false,
-                message: 'Incident not found'
-            });
-        }
-
-        // ✅ FIXED: Check permissions with correct user ID
-        const userId = req.user.userId || req.user.id;
-        const canUpdateStatus = req.user.role === 'admin' || 
-                               req.user.role === 'teacher' || 
-                               incident.assigned_to === userId;
-
-        if (!canUpdateStatus) {
-            return res.status(403).json({
-                success: false,
-                message: 'Access denied'
-            });
-        }
-
-        const updateData = { status };
-
-        // If marking as resolved or closed, add resolution info
-        if (status === 'resolved' || status === 'closed') {
-            updateData.resolved_at = new Date();
-            updateData.resolved_by = userId;
-            if (resolution_notes) {
-                updateData.resolution_notes = resolution_notes;
-            }
-        }
-
-        await incident.update(updateData);
-
-        // Create notification for status change
-        try {
-            let notificationTitle = '';
-            let notificationMessage = '';
-
-            switch (status) {
-                case 'in_progress':
-                    notificationTitle = 'Incident In Progress';
-                    notificationMessage = `Incident "${incident.title}" is now being worked on.`;
-                    break;
-                case 'resolved':
-                    notificationTitle = 'Incident Resolved';
-                    notificationMessage = `Incident "${incident.title}" has been resolved.`;
-                    break;
-                case 'closed':
-                    notificationTitle = 'Incident Closed';
-                    notificationMessage = `Incident "${incident.title}" has been closed.`;
-                    break;
-                default:
-                    notificationTitle = 'Incident Status Updated';
-                    notificationMessage = `Incident "${incident.title}" status has been updated to ${status}.`;
-            }
-
-            await createNotification({
-                user_id: incident.reported_by,
-                type: 'incident',
-                title: notificationTitle,
-                message: notificationMessage,
-                metadata: {
-                    incident_id: incident.id,
-                    incident_title: incident.title,
-                    old_status: incident.status,
-                    new_status: status,
-                    priority: incident.priority,
-                    resolution_notes: resolution_notes || null
-                }
-            });
-            console.log('📧 Incident status notification created for:', incident.title);
-        } catch (notifError) {
-            console.error('⚠️ Failed to create incident status notification:', notifError.message);
-        }
-
-        res.json({
-            success: true,
-            data: incident,
-            message: 'Incident status updated successfully'
-        });
-    } catch (error) {
-        console.error('💥 Error updating incident status:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to update incident status',
-            error: error.message
-        });
-    }
-});
-
-// Delete incident
+// DELETE incident
 router.delete('/:id', async (req, res) => {
     try {
-        const incident = await Incident.findByPk(req.params.id);
-        if (!incident) {
-            return res.status(404).json({
-                success: false,
-                message: 'Incident not found'
-            });
-        }
-
-        // ✅ FIXED: Check permissions with correct user ID
-        const userId = req.user.userId || req.user.id;
-        const canDelete = req.user.role === 'admin' || 
-                         incident.reported_by === userId;
-
-        if (!canDelete) {
-            return res.status(403).json({
-                success: false,
-                message: 'Access denied'
-            });
-        }
-
-        await incident.destroy();
-
+        await incidentService.deleteIncident(req.params.id);
         res.json({
             success: true,
             message: 'Incident deleted successfully'
         });
     } catch (error) {
-        console.error('💥 Error deleting incident:', error);
+        console.error('Error deleting incident:', error);
+        if (error.message === 'Incident not found') {
+            return res.status(404).json({
+                success: false,
+                message: error.message
+            });
+        }
         res.status(500).json({
             success: false,
             message: 'Failed to delete incident',

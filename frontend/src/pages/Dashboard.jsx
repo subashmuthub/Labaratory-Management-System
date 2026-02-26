@@ -286,7 +286,14 @@ export default function Dashboard() {
             if (response.ok) {
                 const result = await response.json()
                 if (result.success) {
-                    setNotifications(result.data || [])
+                    // Normalize notification data
+                    const normalizedNotifications = (result.data || []).map(notification => ({
+                        ...notification,
+                        title: typeof notification.title === 'string' ? notification.title : String(notification.title || 'Notification'),
+                        message: typeof notification.message === 'string' ? notification.message : String(notification.message || ''),
+                        created_at: notification.created_at || new Date().toISOString()
+                    }))
+                    setNotifications(normalizedNotifications)
                 }
             }
         } catch (error) {
@@ -389,6 +396,7 @@ export default function Dashboard() {
 
     const fetchRecentActivities = async () => {
         try {
+            console.log('📊 Fetching recent activities...')
             const response = await fetch(`${API_BASE_URL}/activities/recent?limit=10`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -396,11 +404,27 @@ export default function Dashboard() {
                 }
             })
 
+            console.log('📊 Activities response status:', response.status)
             if (response.ok) {
                 const result = await response.json()
+                console.log('📊 Activities result:', result)
                 if (result.success) {
-                    setRecentActivities(result.data || [])
+                    console.log('📊 Activities data:', result.data)
+                    console.log('📊 Setting activities:', Array.isArray(result.data) ? result.data.length : 'Not an array')
+                    // Normalize data to ensure all values are primitives
+                    const normalizedActivities = (result.data || []).map(activity => ({
+                        ...activity,
+                        description: typeof activity.description === 'string' ? activity.description : String(activity.description || ''),
+                        user_name: typeof activity.user_name === 'string' ? activity.user_name : String(activity.user_name || 'Unknown'),
+                        type: typeof activity.type === 'string' ? activity.type : String(activity.type || ''),
+                        created_at: activity.created_at || new Date().toISOString()
+                    }))
+                    setRecentActivities(normalizedActivities)
+                } else {
+                    console.warn('📊 Activities success=false')
                 }
+            } else {
+                console.error('📊 Activities response not ok:', response.status)
             }
         } catch (error) {
             console.error('Error fetching recent activities:', error)
@@ -420,7 +444,15 @@ export default function Dashboard() {
             if (response.ok) {
                 const result = await response.json()
                 if (result.success) {
-                    setAllActivities(result.data || [])
+                    // Normalize data to ensure all values are primitives
+                    const normalizedActivities = (result.data || []).map(activity => ({
+                        ...activity,
+                        description: typeof activity.description === 'string' ? activity.description : String(activity.description || ''),
+                        user_name: typeof activity.user_name === 'string' ? activity.user_name : String(activity.user_name || 'Unknown'),
+                        type: typeof activity.type === 'string' ? activity.type : String(activity.type || ''),
+                        created_at: activity.created_at || new Date().toISOString()
+                    }))
+                    setAllActivities(normalizedActivities)
                 }
             }
         } catch (error) {
@@ -437,6 +469,7 @@ export default function Dashboard() {
 
     const fetchUpcomingBookings = async () => {
         try {
+            console.log('📅 Fetching upcoming bookings...')
             const response = await fetch(`${API_BASE_URL}/bookings/upcoming?limit=5`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -444,11 +477,28 @@ export default function Dashboard() {
                 }
             })
 
+            console.log('📅 Upcoming bookings response status:', response.status)
             if (response.ok) {
                 const result = await response.json()
+                console.log('📅 Upcoming bookings result:', result)
                 if (result.success) {
-                    setUpcomingBookings(result.data || [])
+                    console.log('📅 Upcoming bookings data:', result.data)
+                    console.log('📅 Setting upcoming bookings:', Array.isArray(result.data) ? result.data.length : 'Not an array')
+                    // Normalize data to ensure all values are primitives
+                    const normalizedBookings = (result.data || []).map(booking => ({
+                        ...booking,
+                        lab_name: typeof booking.lab_name === 'string' ? booking.lab_name : (booking.lab_name ? String(booking.lab_name) : null),
+                        equipment_name: typeof booking.equipment_name === 'string' ? booking.equipment_name : (booking.equipment_name ? String(booking.equipment_name) : null),
+                        purpose: typeof booking.purpose === 'string' ? booking.purpose : String(booking.purpose || ''),
+                        status: typeof booking.status === 'object' && booking.status !== null ? String(booking.status.status || booking.status) : (typeof booking.status === 'string' ? booking.status : String(booking.status || 'Unknown')),
+                        start_time: booking.start_time || new Date().toISOString()
+                    }))
+                    setUpcomingBookings(normalizedBookings)
+                } else {
+                    console.warn('📅 Upcoming bookings success=false')
                 }
+            } else {
+                console.error('📅 Upcoming bookings response not ok:', response.status)
             }
         } catch (error) {
             console.error('Error fetching upcoming bookings:', error)
@@ -509,7 +559,15 @@ export default function Dashboard() {
             if (response.ok) {
                 const result = await response.json()
                 if (result.success) {
-                    setRecentOrders(result.data || [])
+                    // Normalize order data
+                    const normalizedOrders = (result.data || []).map(order => ({
+                        ...order,
+                        equipment_name: typeof order.equipment_name === 'string' ? order.equipment_name : String(order.equipment_name || 'N/A'),
+                        supplier: typeof order.supplier === 'string' ? order.supplier : String(order.supplier || 'N/A'),
+                        status: typeof order.status === 'object' && order.status !== null ? String(order.status.status || order.status) : (typeof order.status === 'string' ? order.status : String(order.status || 'Unknown')),
+                        total_amount: typeof order.total_amount === 'number' ? order.total_amount : parseFloat(order.total_amount) || 0
+                    }))
+                    setRecentOrders(normalizedOrders)
                 }
             }
         } catch (error) {
@@ -529,7 +587,15 @@ export default function Dashboard() {
             if (response.ok) {
                 const result = await response.json()
                 if (result.success) {
-                    setEquipmentStatus(result.data || [])
+                    // Normalize equipment status data to ensure all fields are strings
+                    const normalizedEquipment = (result.data || []).map(equipment => ({
+                        ...equipment,
+                        name: typeof equipment.name === 'string' ? equipment.name : String(equipment.name || 'Unknown'),
+                        status: typeof equipment.status === 'object' && equipment.status !== null ? String(equipment.status.status || equipment.status) : (typeof equipment.status === 'string' ? equipment.status : String(equipment.status || 'unknown')),
+                        location: typeof equipment.location === 'string' ? equipment.location : String(equipment.location || 'N/A'),
+                        current_user: equipment.current_user ? (typeof equipment.current_user === 'string' ? equipment.current_user : String(equipment.current_user)) : null
+                    }))
+                    setEquipmentStatus(normalizedEquipment)
                 }
             }
         } catch (error) {
@@ -888,10 +954,14 @@ export default function Dashboard() {
                                                                 <div className="flex items-start space-x-2">
                                                                     <div className={`w-2 h-2 rounded-full mt-2 ${!notification.read ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
                                                                     <div className="flex-1">
-                                                                        <p className="text-sm font-medium text-gray-800">{notification.title}</p>
-                                                                        <p className="text-xs text-gray-600 truncate">{notification.message}</p>
+                                                                        <p className="text-sm font-medium text-gray-800">
+                                                                            {typeof notification.title === 'string' ? notification.title : 'Notification'}
+                                                                        </p>
+                                                                        <p className="text-xs text-gray-600 truncate">
+                                                                            {typeof notification.message === 'string' ? notification.message : ''}
+                                                                        </p>
                                                                         <p className="text-xs text-gray-500 mt-1">
-                                                                            {formatTimeAgo(notification.created_at)}
+                                                                            {notification.created_at ? formatTimeAgo(notification.created_at) : 'N/A'}
                                                                         </p>
                                                                     </div>
                                                                 </div>
@@ -902,14 +972,16 @@ export default function Dashboard() {
                                                         {systemAlerts.slice(0, 2).map(alert => (
                                                             <div key={alert.id} className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50">
                                                                 <div className="flex items-start space-x-2">
-                                                                    <div className={`w-2 h-2 rounded-full mt-2 ${alert.type === 'error' ? 'bg-red-500' :
-                                                                        alert.type === 'warning' ? 'bg-yellow-500' :
-                                                                            alert.type === 'success' ? 'bg-green-500' : 'bg-blue-500'
+                                                                    <div className={`w-2 h-2 rounded-full mt-2 ${(typeof alert.type === 'string' ? alert.type : '') === 'error' ? 'bg-red-500' :
+                                                                        (typeof alert.type === 'string' ? alert.type : '') === 'warning' ? 'bg-yellow-500' :
+                                                                            (typeof alert.type === 'string' ? alert.type : '') === 'success' ? 'bg-green-500' : 'bg-blue-500'
                                                                         }`}></div>
                                                                     <div className="flex-1">
-                                                                        <p className="text-sm text-gray-800">{alert.message}</p>
+                                                                        <p className="text-sm text-gray-800">
+                                                                            {typeof alert.message === 'string' ? alert.message : 'Alert'}
+                                                                        </p>
                                                                         <p className="text-xs text-gray-500 mt-1">
-                                                                            {new Date(alert.created_at).toLocaleString()}
+                                                                            {alert.created_at ? new Date(alert.created_at).toLocaleString() : 'N/A'}
                                                                         </p>
                                                                     </div>
                                                                 </div>
@@ -1231,19 +1303,23 @@ export default function Dashboard() {
                                         {equipmentStatus.slice(0, 4).map(equipment => (
                                             <div key={equipment.id} className="p-4 border border-gray-200 rounded-lg">
                                                 <div className="flex items-center justify-between mb-2">
-                                                    <h3 className="font-medium text-gray-900">{equipment.name}</h3>
-                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${equipment.status === 'available' ? 'bg-green-100 text-green-800' :
-                                                        equipment.status === 'in_use' ? 'bg-blue-100 text-blue-800' :
-                                                            equipment.status === 'maintenance' ? 'bg-yellow-100 text-yellow-800' :
+                                                    <h3 className="font-medium text-gray-900">
+                                                        {typeof equipment.name === 'string' ? equipment.name : 'Unknown Equipment'}
+                                                    </h3>
+                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${(typeof equipment.status === 'string' ? equipment.status : String(equipment.status || '')) === 'available' ? 'bg-green-100 text-green-800' :
+                                                        (typeof equipment.status === 'string' ? equipment.status : String(equipment.status || '')) === 'in_use' ? 'bg-blue-100 text-blue-800' :
+                                                            (typeof equipment.status === 'string' ? equipment.status : String(equipment.status || '')) === 'maintenance' ? 'bg-yellow-100 text-yellow-800' :
                                                                 'bg-red-100 text-red-800'
                                                         }`}>
-                                                        {equipment.status?.replace('_', ' ')}
+                                                        {typeof equipment.status === 'string' ? equipment.status.replace('_', ' ') : 'Unknown'}
                                                     </span>
                                                 </div>
-                                                <p className="text-sm text-gray-600">{equipment.location}</p>
+                                                <p className="text-sm text-gray-600">
+                                                    {typeof equipment.location === 'string' ? equipment.location : 'N/A'}
+                                                </p>
                                                 {equipment.current_user && (
                                                     <p className="text-xs text-gray-500 mt-1">
-                                                        Used by: {equipment.current_user}
+                                                        Used by: {typeof equipment.current_user === 'string' ? equipment.current_user : 'Unknown'}
                                                     </p>
                                                 )}
                                             </div>
@@ -1347,17 +1423,23 @@ export default function Dashboard() {
                                     {upcomingBookings.length > 0 ? (
                                         upcomingBookings.map(booking => (
                                             <div key={booking.id} className="p-4 border-l-4 border-blue-500 bg-blue-50 rounded-r-lg">
-                                                <h3 className="font-medium text-gray-900">{booking.lab_name || booking.equipment_name}</h3>
-                                                <p className="text-sm text-gray-600">{booking.purpose}</p>
+                                                <h3 className="font-medium text-gray-900">
+                                                    {typeof booking.lab_name === 'string' ? booking.lab_name : 
+                                                     typeof booking.equipment_name === 'string' ? booking.equipment_name : 
+                                                     'Resource'}
+                                                </h3>
+                                                <p className="text-sm text-gray-600">
+                                                    {typeof booking.purpose === 'string' ? booking.purpose : 'N/A'}
+                                                </p>
                                                 <div className="flex items-center justify-between mt-2">
                                                     <span className="text-xs text-gray-500">
-                                                        {new Date(booking.start_time).toLocaleString()}
+                                                        {booking.start_time ? new Date(booking.start_time).toLocaleString() : 'N/A'}
                                                     </span>
-                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${booking.status === 'Confirmed' ? 'bg-green-100 text-green-800' :
-                                                        booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${(typeof booking.status === 'string' ? booking.status : String(booking.status || '')) === 'Confirmed' ? 'bg-green-100 text-green-800' :
+                                                        (typeof booking.status === 'string' ? booking.status : String(booking.status || '')) === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
                                                             'bg-gray-100 text-gray-800'
                                                         }`}>
-                                                        {booking.status}
+                                                        {typeof booking.status === 'string' ? booking.status : String(booking.status || 'Unknown')}
                                                     </span>
                                                 </div>
                                             </div>
@@ -1390,18 +1472,24 @@ export default function Dashboard() {
                                             <div key={order.id} className="p-4 border border-gray-200 rounded-lg">
                                                 <div className="flex items-center justify-between mb-2">
                                                     <h3 className="font-medium text-gray-900">Order #{order.id}</h3>
-                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${order.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                                                        order.status === 'Approved' ? 'bg-blue-100 text-blue-800' :
-                                                            order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
+                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${(typeof order.status === 'string' ? order.status : String(order.status || '')) === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                                                        (typeof order.status === 'string' ? order.status : String(order.status || '')) === 'Approved' ? 'bg-blue-100 text-blue-800' :
+                                                            (typeof order.status === 'string' ? order.status : String(order.status || '')) === 'Delivered' ? 'bg-green-100 text-green-800' :
                                                                 'bg-gray-100 text-gray-800'
                                                         }`}>
-                                                        {order.status}
+                                                        {typeof order.status === 'string' ? order.status : String(order.status || 'Unknown')}
                                                     </span>
                                                 </div>
-                                                <p className="text-sm text-gray-600">{order.equipment_name}</p>
+                                                <p className="text-sm text-gray-600">
+                                                    {typeof order.equipment_name === 'string' ? order.equipment_name : 'N/A'}
+                                                </p>
                                                 <div className="flex items-center justify-between mt-2">
-                                                    <span className="text-xs text-gray-500">{order.supplier}</span>
-                                                    <span className="text-sm font-medium text-gray-900">${order.total_amount}</span>
+                                                    <span className="text-xs text-gray-500">
+                                                        {typeof order.supplier === 'string' ? order.supplier : 'N/A'}
+                                                    </span>
+                                                    <span className="text-sm font-medium text-gray-900">
+                                                        ${typeof order.total_amount === 'number' ? order.total_amount : (order.total_amount || 0)}
+                                                    </span>
                                                 </div>
                                             </div>
                                         ))}
@@ -1510,22 +1598,22 @@ export default function Dashboard() {
                                                         </div>
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-sm font-medium text-gray-900">
-                                                                {activity.description}
+                                                                {typeof activity.description === 'string' ? activity.description : JSON.stringify(activity.description || '')}
                                                             </p>
                                                             <div className="flex flex-wrap items-center gap-2 mt-2">
                                                                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                                                    {activity.user_name}
+                                                                    {typeof activity.user_name === 'string' ? activity.user_name : 'Unknown'}
                                                                 </span>
                                                                 <span className="text-xs text-gray-500">
-                                                                    {new Date(activity.created_at).toLocaleString('en-US', {
+                                                                    {activity.created_at ? new Date(activity.created_at).toLocaleString('en-US', {
                                                                         month: 'short',
                                                                         day: 'numeric',
                                                                         year: 'numeric',
                                                                         hour: '2-digit',
                                                                         minute: '2-digit'
-                                                                    })}
+                                                                    }) : 'N/A'}
                                                                 </span>
-                                                                {activity.type && (
+                                                                {activity.type && typeof activity.type === 'string' && (
                                                                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                                                                         activity.type === 'booking' ? 'bg-blue-50 text-blue-700' :
                                                                         activity.type === 'incident' ? 'bg-red-50 text-red-700' :

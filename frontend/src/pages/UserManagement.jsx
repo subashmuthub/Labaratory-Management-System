@@ -246,8 +246,13 @@ export default function UserManagement() {
         try {
             console.log('📥 Fetching users...')
             const data = await usersAPI.getAll()
-            console.log('✅ Users fetched:', data)
-            setUsers(Array.isArray(data) ? data : [])
+            console.log('✅ Users fetched - Raw data:', data)
+            console.log('✅ Is Array?:', Array.isArray(data))
+            console.log('✅ Data length:', data?.length)
+            
+            const usersArray = Array.isArray(data) ? data : []
+            console.log('✅ Setting users:', usersArray.length, 'users')
+            setUsers(usersArray)
         } catch (err) {
             console.error('❌ Error fetching users:', err)
             if (err.message.includes('401') || err.message.includes('Unauthorized')) {
@@ -255,6 +260,7 @@ export default function UserManagement() {
                 navigate('/login')
                 return
             }
+            setUsers([]) // Ensure empty array on error
             throw err
         }
     }
@@ -321,24 +327,33 @@ export default function UserManagement() {
 
         try {
             const userData = editingUser || newUser
+            console.log('💾 Saving user data:', userData)
 
             if (editingUser) {
-                await usersAPI.update(editingUser.id, userData)
+                console.log('✏️ Updating user:', editingUser.id)
+                const response = await usersAPI.update(editingUser.id, userData)
+                console.log('✅ Update response:', response)
                 showSuccessMessage('User updated successfully!')
             } else {
-                await usersAPI.create(userData)
+                console.log('➕ Creating new user')
+                const response = await usersAPI.create(userData)
+                console.log('✅ Create response:', response)
                 showSuccessMessage('User created successfully!')
             }
 
+            console.log('🔄 Reloading user data...')
             await loadUserData()
             closeForm()
+            console.log('✅ Form closed, data refreshed')
         } catch (err) {
+            console.error('❌ Save error:', err)
             if (err.message.includes('401') || err.message.includes('Unauthorized')) {
                 logout()
                 navigate('/login')
                 return
             }
             setError('Error saving user: ' + err.message)
+            setTimeout(() => setError(''), 5000)
         }
     }
 
@@ -382,6 +397,54 @@ export default function UserManagement() {
         }
     }
 
+    const handleDeleteUser = async (userItem) => {
+        // Prevent deleting yourself
+        if (userItem.id === user?.userId || userItem.email === user?.email) {
+            setError('You cannot delete your own account!')
+            setTimeout(() => setError(''), 3000)
+            return
+        }
+
+        // Double confirmation for permanent deletion
+        if (!window.confirm(`⚠️ Are you sure you want to PERMANENTLY DELETE user "${userItem.name}"?\n\nThis action CANNOT be undone!`)) return
+        
+        // Second confirmation
+        if (!window.confirm(`Final confirmation: Delete ${userItem.email}?`)) return
+
+        try {
+            console.log('🗑️ Starting delete for user:', userItem.id, userItem.name)
+            const response = await usersAPI.delete(userItem.id)
+            console.log('✅ Delete API response:', response)
+            
+            console.log('🔄 Refreshing user list...')
+            await fetchUsers()
+            console.log('📊 Refreshing stats...')
+            await fetchUserStats()
+            console.log('✅ User deleted and data refreshed!')
+            
+            showSuccessMessage(`User "${userItem.name}" deleted permanently!`)
+        } catch (err) {
+            console.error('❌ Delete error:', err)
+            if (err.message.includes('401') || err.message.includes('Unauthorized')) {
+                logout()
+                navigate('/login')
+                return
+            }
+            
+            // Check if it's a foreign key constraint error
+            if (err.message.includes('Cannot delete user') || err.message.includes('related records')) {
+                const errorMsg = err.message
+                setError(errorMsg)
+                // Show alert for better visibility
+                alert(`❌ ${errorMsg}\n\nSuggestion: Use the deactivate button (⭕) instead of delete.`)
+            } else {
+                setError('Error deleting user: ' + err.message)
+            }
+            
+            setTimeout(() => setError(''), 8000)
+        }
+    }
+
     const handleFilterChange = (e) => {
         const { name, value } = e.target
         setFilters({ ...filters, [name]: value })
@@ -406,6 +469,7 @@ export default function UserManagement() {
     }
 
     const getRoleColor = (role) => {
+        if (!role) return 'bg-gray-100 text-gray-800'
         switch (role) {
             case 'admin': return 'bg-red-100 text-red-800'
             case 'teacher': return 'bg-blue-100 text-blue-800'
@@ -416,17 +480,29 @@ export default function UserManagement() {
     }
 
     const getStatusColor = (status) => {
+        if (!status) return 'bg-gray-100 text-gray-800'
         return status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
     }
 
     const filteredUsers = users.filter(userItem => {
-        const matchesSearch = userItem.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-            userItem.email.toLowerCase().includes(filters.search.toLowerCase())
+        const matchesSearch = !filters.search || 
+            (userItem.name && userItem.name.toLowerCase().includes(filters.search.toLowerCase())) ||
+            (userItem.email && userItem.email.toLowerCase().includes(filters.search.toLowerCase()))
         const matchesRole = !filters.role || userItem.role === filters.role
         const matchesStatus = !filters.status || userItem.status === filters.status
 
         return matchesSearch && matchesRole && matchesStatus
     })
+    
+    // Debug logging
+    useEffect(() => {
+        console.log('👥 Users state:', users.length, 'users')
+        console.log('🔍 Filters:', filters)
+        console.log('✅ Filtered users:', filteredUsers.length, 'users')
+        if (users.length > 0 && filteredUsers.length === 0) {
+            console.warn('⚠️ WARNING: Users exist but filtered to 0! Check filters:', filters)
+        }
+    }, [users, filters, filteredUsers.length])
 
     if (loading) {
         return (
@@ -916,14 +992,14 @@ export default function UserManagement() {
                                                     #{userItem.id}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                    {userItem.name}
+                                                    {userItem.name || 'N/A'}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    {userItem.email}
+                                                    {userItem.email || 'N/A'}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(userItem.role)}`}>
-                                                        {userItem.role.replace('_', ' ')}
+                                                        {userItem.role ? userItem.role.replace('_', ' ') : 'N/A'}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
@@ -969,6 +1045,16 @@ export default function UserManagement() {
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                                                     </svg>
                                                                 )}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteUser(userItem)}
+                                                                className="text-red-600 hover:text-red-900 transition-colors"
+                                                                title="Delete User Permanently"
+                                                                disabled={userItem.id === user?.userId || userItem.email === user?.email}
+                                                            >
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                                </svg>
                                                             </button>
                                                         </div>
                                                     </td>

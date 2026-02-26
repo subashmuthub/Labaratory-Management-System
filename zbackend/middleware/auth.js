@@ -1,47 +1,28 @@
-// middleware/auth.js - UPDATED VERSION
+// middleware/auth.js - Cookie-Based Authentication
 const jwt = require('jsonwebtoken');
-const { User } = require('../models'); // ✅ FIXED: Import from models/index.js
+const { User } = require('../models');
 
-// JWT Secret - should match your auth routes
+// JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
 
-// Generic authentication middleware
+// Cookie-based authentication middleware
 const authenticateToken = async (req, res, next) => {
     try {
         console.log('🔐 Authentication middleware triggered');
-        console.log('Headers:', req.headers.authorization ? 'Authorization header present' : 'No authorization header');
+        console.log('Cookies:', req.cookies ? 'Cookies present' : 'No cookies');
 
-        // Get token from Authorization header
-        const authHeader = req.headers.authorization;
+        // Get token from cookie
+        const token = req.cookies?.authToken;
 
-        if (!authHeader) {
-            console.log('❌ No authorization header');
+        if (!token || token === 'null' || token === 'undefined') {
+            console.log('❌ No auth token in cookies');
             return res.status(401).json({
                 success: false,
                 message: 'Access denied. No token provided.'
             });
         }
 
-        if (!authHeader.startsWith('Bearer ')) {
-            console.log('❌ Invalid authorization header format');
-            return res.status(401).json({
-                success: false,
-                message: 'Access denied. Invalid token format.'
-            });
-        }
-
-        // Extract token
-        const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-
-        if (!token || token === 'null' || token === 'undefined') {
-            console.log('❌ Empty or invalid token value');
-            return res.status(401).json({
-                success: false,
-                message: 'Access denied. No valid token provided.'
-            });
-        }
-
-        console.log('🎫 Token extracted successfully');
+        console.log('🎫 Token extracted from cookie');
 
         // Verify token
         const decoded = jwt.verify(token, JWT_SECRET);

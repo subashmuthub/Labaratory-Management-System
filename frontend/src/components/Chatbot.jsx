@@ -37,7 +37,7 @@ export default function IntelligentChatbot() {
     const initializeChat = () => {
         const welcomeMessage = {
             id: Date.now(),
-            text: user ? `Hello ${user?.name || 'there'}! 🤖\n\nI'm your intelligent lab assistant powered by AI! I can help you with both lab data and general questions.\n\n**What I can do:**\n🎤 **Voice Commands**: Click the microphone to speak\n📊 **Lab Data**: \"How many labs?\", \"Show equipment\", \"Find i7 computers\"\n🔍 **Equipment Info**: \"Where is computer001?\", \"What are the specs?\"\n🤖 **AI Assistance**: Lab safety, maintenance tips, study advice\n💡 **Smart Responses**: I understand both data queries and general questions\n⚡ **Quick Actions**: Use buttons for common tasks\n\n**Try asking me anything - data queries or general questions!**` 
+            text: user ? `**Gemini AI**: Hello ${user?.name || 'there'}! 🤖\n\nI'm your intelligent lab assistant powered by AI! I can help you with both lab data and general questions.\n\n**What I can do:**\n🎤 **Voice Commands**: Click the microphone to speak\n📊 **Lab Data**: "How many labs?", "Show equipment", "Find i7 computers"\n🔍 **Equipment Info**: "Where is computer001?", "What are the specs?"\n🤖 **AI Assistance**: Lab safety, maintenance tips, study advice\n💡 **Smart Responses**: I understand both data queries and general questions\n⚡ **Quick Actions**: Use buttons for common tasks\n\n**Try asking me anything - data queries or general questions!**` 
             : `Welcome to NEC Lab Management System! 🤖\n\nTo use the chatbot features, please log in first.\n\nOnce logged in, I can help you with:\n📊 Lab data and equipment information\n🤖 AI-powered assistance and advice\n🎤 Voice commands\n💡 Smart responses to your questions\n\n**Please log in to get started!**`,
             isBot: true,
             timestamp: new Date(),
@@ -214,7 +214,9 @@ export default function IntelligentChatbot() {
                         <div className="relative">
                             {/* Robot/AI Icon */}
                             <div className="w-8 h-8 mx-auto text-white flex items-center justify-center">
-                                <span className="text-2xl">🤖</span>
+                                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 14c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm0-2c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z"/>
+                                </svg>
                             </div>
                             
                             {/* Notification Badge */}
@@ -255,7 +257,9 @@ export default function IntelligentChatbot() {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-3">
                                 <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center animate-pulse">
-                                    <span className="text-xl">�</span>
+                                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 14c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm0-2c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z"/>
+                                    </svg>
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-lg">Lab AI Assistant</h3>

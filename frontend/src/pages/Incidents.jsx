@@ -277,13 +277,15 @@ export default function Incidents() {
     // ✅ FIXED: Safe incidents fetch with proper error handling
     const fetchIncidents = async () => {
         try {
-            console.log('🔍 Fetching incidents...')
+            console.log('🔍 Fetching incidents with token:', token ? 'Present' : 'Missing')
             const response = await fetch(`${API_BASE_URL}/incidents`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
+            
+            console.log('📡 Incidents response status:', response.status, response.statusText)
             
             if (response.ok) {
                 const result = await response.json()
@@ -294,15 +296,17 @@ export default function Incidents() {
                 const safeIncidents = Array.isArray(incidentsData) ? incidentsData : []
                 
                 setIncidents(safeIncidents)
+                setError('') // Clear any previous errors
                 console.log('✅ Incidents set:', safeIncidents.length, 'items')
             } else {
-                console.error('❌ Incidents fetch failed:', response.status)
-                setError('Failed to fetch incidents')
+                const errorText = await response.text()
+                console.error('❌ Incidents fetch failed:', response.status, errorText)
+                setError(`Failed to fetch incidents: ${response.status} ${response.statusText}`)
                 setIncidents([])
             }
         } catch (error) {
             console.error('❌ Error fetching incidents:', error)
-            setError('Failed to fetch incidents')
+            setError(`Failed to fetch incidents: ${error.message}`)
             setIncidents([])
         } finally {
             setLoading(false)

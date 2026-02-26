@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const { sequelize } = require('./config/database');
@@ -21,6 +22,9 @@ app.use(cors({
 // Increase payload limits for image uploads (10MB limit)
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Cookie parser middleware
+app.use(cookieParser());
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -49,9 +53,8 @@ app.get('/api/health', (req, res) => {
 });
 
 // Import routes
-const authRoutes = require('./routes/auth');
 const enhancedAuthRoutes = require('./routes/enhancedAuth');
-// const otpRoutes = require('./routes/otp'); // Temporarily disabled - using Enhanced Auth OTP
+const otpRoutes = require('./routes/otp');
 const { router: recentlyAccessedRoutes } = require('./routes/recentlyAccessed');
 const usersRoutes = require('./routes/users');
 const equipmentRoutes = require('./routes/equipment');
@@ -69,7 +72,7 @@ const activitiesRoutes = require('./routes/activities');
 // Define routes configuration
 const routes = [
     { name: 'Enhanced Auth', path: '/api/auth', file: './routes/enhancedAuth' },
-    // { name: 'OTP', path: '/api/otp', file: './routes/otp' }, // Temporarily disabled - using Enhanced Auth OTP
+    { name: 'OTP', path: '/api/otp', file: './routes/otp' },
     { name: 'Recent', path: '/api/recent', file: './routes/recentlyAccessed', isModule: true },
     { name: 'Users', path: '/api/users', file: './routes/users' },
     { name: 'Equipment', path: '/api/equipment', file: './routes/equipment' },

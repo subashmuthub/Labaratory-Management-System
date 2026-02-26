@@ -5,133 +5,40 @@ export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [token, setToken] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Initialize auth state from localStorage
+    // Initialize auth state from server (check cookie)
     useEffect(() => {
         console.log('🔄 AuthContext: Initializing authentication...');
         
-        const initializeAuth = () => {
-            // Get stored credentials
-            const storedToken = localStorage.getItem('token');
-            const storedUser = localStorage.getItem('user');
-            
-            console.log('📋 AuthContext: Checking stored auth:', { 
-                hasToken: !!storedToken, 
-                hasUser: !!storedUser 
-            });
-            
-            if (storedToken && storedUser) {
-                try {
-                    const parsedUser = JSON.parse(storedUser);
-                    console.log('⚡ AuthContext: Restoring auth state immediately');
-                    
-                    // Set auth state synchronously
-                    setToken(storedToken);
-                    setUser(parsedUser);
-                    setLoading(false);
-                    
-                    console.log('✅ AuthContext: Auth state restored for user:', parsedUser.email);
-                    return true;
-                } catch (error) {
-                    console.error('❌ AuthContext: Error parsing stored user:', error);
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
-                }
-            } else {
-                console.log('🚫 AuthContext: No stored auth found');
-            }
-            
-            setLoading(false);
-            return false;
-        };
-        
-        // Initialize auth state immediately
-        const hasAuth = initializeAuth();
-        
-        // Add storage event listener for cross-tab sync
-        const handleStorageChange = (event) => {
-            if (event.key === 'token' || event.key === 'user') {
-                console.log('🔄 AuthContext: Storage changed, reinitializing auth');
-                initializeAuth();
-            }
-        };
-        
-        // Add beforeunload listener to ensure auth persistence
-        const handleBeforeUnload = () => {
-            // Ensure current auth state is saved
-            if (token && user) {
-                localStorage.setItem('token', token);
-                localStorage.setItem('user', JSON.stringify(user));
-                console.log('💾 AuthContext: Auth state preserved before unload');
-            }
-        };
-        
-        window.addEventListener('storage', handleStorageChange);
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        
-        // Background token verification (optional - don't block UI)
-        const verifyTokenInBackground = async () => {
-            if (!hasAuth || !navigator.onLine) {
-                console.log('🚫 AuthContext: Skipping background verification - no auth or offline');
-                return;
-            }
-            
+        const initializeAuth = async () => {
             try {
-                const storedToken = localStorage.getItem('token');
-                if (!storedToken) return;
-                
-                console.log('🔍 AuthContext: Background token verification starting...');
-
-                
+                // Try to verify cookie with server
                 const response = await fetch(`${apiConfig.baseURL}/api/auth/verify`, {
-                    headers: {
-                        'Authorization': `Bearer ${storedToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    signal: AbortSignal.timeout(5000) // 5 second timeout
+                    credentials: 'include' // Include cookies
                 });
 
                 if (response.ok) {
                     const data = await response.json();
-                    if (data.success) {
-                        console.log('✅ AuthContext: Token is valid');
-                    } else {
-                        console.warn('⚠️ AuthContext: Invalid token response');
-                        // Only clear on explicit invalidity
-                        if (data.message?.includes('invalid') || data.message?.includes('expired')) {
-                            localStorage.removeItem('token');
-                            localStorage.removeItem('user');
-                            setToken(null);
-                            setUser(null);
-                        }
+                    if (data.success && data.data?.user) {
+                        setUser(data.data.user);
+                        // Also store in localStorage for quick access (but not the token)
+                        localStorage.setItem('user', JSON.stringify(data.data.user));
+                        console.log('✅ AuthContext: Authenticated user:', data.data.user.email);
                     }
-                } else if (response.status === 401) {
-                    console.warn('🔒 AuthContext: Token unauthorized - clearing auth');
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
-                    setToken(null);
-                    setUser(null);
                 } else {
-                    console.warn('⚠️ AuthContext: Verification failed with status:', response.status);
+                    console.log('🚫 AuthContext: No valid session found');
+                    localStorage.removeItem('user');
                 }
             } catch (error) {
-                console.warn('🌐 AuthContext: Background verification failed:', error.message);
-                // Keep existing auth state on network errors
+                console.error('❌ AuthContext: Initialization error:', error);
+                localStorage.removeItem('user');
+            } finally {
+                setLoading(false);
             }
         };
-        // Start background verification if we have auth
-        if (hasAuth) {
-            // Delay verification slightly to let UI render first
-            setTimeout(verifyTokenInBackground, 100);
-        }
         
-        // Cleanup
-        return () => {
-            window.removeEventListener('storage', handleStorageChange);
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-        };
+        initializeAuth();
     }, []);
 
     const login = async (email, password) => {
@@ -143,20 +50,18 @@ export const AuthProvider = ({ children }) => {
                 headers: {
                     'Content-Type': 'application/json'
                 },
+                credentials: 'include', // Include cookies
                 body: JSON.stringify({ email, password })
             });
 
             const data = await response.json();
             console.log('Login response:', data);
 
-            if (response.ok && data.success && data.data && data.data.token) {
-                // Store token and user data
-                localStorage.setItem('token', data.data.token);
-                localStorage.setItem('user', JSON.stringify(data.data.user));
-
+            if (response.ok && data.success && data.data?.user) {
                 // Update state
-                setToken(data.data.token);
                 setUser(data.data.user);
+                // Store user data (not token) in localStorage
+                localStorage.setItem('user', JSON.stringify(data.data.user));
 
                 console.log('Login successful, user:', data.data.user);
                 return { success: true, user: data.data.user };
@@ -332,20 +237,18 @@ export const AuthProvider = ({ children }) => {
                 headers: {
                     'Content-Type': 'application/json'
                 },
+                credentials: 'include', // Include cookies
                 body: JSON.stringify({ name, email, password, role, otp })
             });
 
             const data = await response.json();
             console.log('Registration with OTP response:', data);
 
-            if (response.ok && data.success && data.data && data.data.token) {
-                // Store token and user data
-                localStorage.setItem('token', data.data.token);
-                localStorage.setItem('user', JSON.stringify(data.data.user));
-
+            if (response.ok && data.success && data.data?.user) {
                 // Update state
-                setToken(data.data.token);
                 setUser(data.data.user);
+                // Store user data (not token) in localStorage
+                localStorage.setItem('user', JSON.stringify(data.data.user));
 
                 console.log('🎉 Registration completed successfully:', data.data.user);
                 return { success: true, user: data.data.user };
@@ -367,6 +270,7 @@ export const AuthProvider = ({ children }) => {
                 headers: {
                     'Content-Type': 'application/json'
                 },
+                credentials: 'include', // Include cookies
                 body: JSON.stringify({ name, email, password, role })
             });
 
@@ -374,15 +278,11 @@ export const AuthProvider = ({ children }) => {
             console.log('Registration response:', data);
 
             if (response.ok && data.success) {
-                // Check if this is a complete registration (has token) or OTP initiation
-                if (data.data && data.data.token) {
-                    // Complete registration - store token and user data
-                    localStorage.setItem('token', data.data.token);
-                    localStorage.setItem('user', JSON.stringify(data.data.user));
-
-                    // Update state
-                    setToken(data.data.token);
+                // Check if this is a complete registration or OTP initiation
+                if (data.data?.user) {
+                    // Complete registration - update state
                     setUser(data.data.user);
+                    localStorage.setItem('user', JSON.stringify(data.data.user));
 
                     console.log('Registration successful, user:', data.data.user);
                     return { success: true, user: data.data.user };
@@ -407,47 +307,26 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
+    const logout = async () => {
         console.log('🚪 AuthContext: User explicitly logging out');
 
         // Clear localStorage
-        localStorage.removeItem('token');
         localStorage.removeItem('user');
 
         // Clear state
-        setToken(null);
         setUser(null);
 
-        // Optional: Call backend logout endpoint
-        fetch(`${apiConfig.baseURL}/api/auth/logout`, {
-            method: 'POST',
-            headers: {
-                'Authorization': token ? `Bearer ${token}` : '',
-                'Content-Type': 'application/json'
-            }
-        }).catch(error => {
+        // Call backend logout endpoint to clear cookie
+        try {
+            await fetch(`${apiConfig.baseURL}/api/auth/logout`, {
+                method: 'POST',
+                credentials: 'include' // Include cookies
+            });
+        } catch (error) {
             console.error('Logout API call error:', error);
-        });
+        }
         
         console.log('✅ AuthContext: Logout completed successfully');
-    };
-
-    // Helper function to make authenticated requests
-    const makeAuthenticatedRequest = async (url, options = {}) => {
-        const authToken = token || localStorage.getItem('token');
-
-        if (!authToken) {
-            throw new Error('No authentication token available');
-        }
-
-        const defaultOptions = {
-            headers: {
-                'Authorization': `Bearer ${authToken}`,
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        };
-
-        return fetch(url, { ...options, ...defaultOptions });
     };
 
     // Function to update user data in context and localStorage
@@ -457,25 +336,8 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(newUser));
     };
 
-    // OAuth success handler - directly sets auth state without API call
-    const handleOAuthSuccess = (token, userData) => {
-        console.log('🔐 AuthContext: Handling OAuth success');
-        console.log('👤 Setting OAuth user data:', userData);
-        
-        // Store in localStorage
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(userData));
-        
-        // Update state
-        setToken(token);
-        setUser(userData);
-        
-        console.log('✅ AuthContext: OAuth authentication successful');
-    };
-
     const value = {
         user,
-        token,
         login,
         register,
         registerWithOTP,
@@ -486,28 +348,9 @@ export const AuthProvider = ({ children }) => {
         resetPasswordWithOTP,
         logout,
         loading,
-        isAuthenticated: !loading && !!token && !!user && user.id,
-        makeAuthenticatedRequest,
-        updateUser,
-        handleOAuthSuccess
+        isAuthenticated: !loading && !!user && user.id,
+        updateUser
     };
-
-    // Additional safeguard: If auth state is lost but localStorage has data, restore it
-    React.useEffect(() => {
-        if (!loading && !token && !user) {
-            const storedToken = localStorage.getItem('token');
-            const storedUser = localStorage.getItem('user');
-            if (storedToken && storedUser) {
-                try {
-                    console.log('🔄 AuthContext: Restoring lost auth state from localStorage');
-                    setToken(storedToken);
-                    setUser(JSON.parse(storedUser));
-                } catch (error) {
-                    console.error('Error restoring auth state:', error);
-                }
-            }
-        }
-    }, [loading, token, user]);
 
     return (
         <AuthContext.Provider value={value}>

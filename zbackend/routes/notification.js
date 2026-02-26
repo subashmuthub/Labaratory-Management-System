@@ -1,10 +1,8 @@
-// routes/notifications.js
 const express = require('express');
-const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
-const Notification = require('../models/Notification');
-const NotificationSettings = require('../models/NotificationSettings');
-const { createNotification } = require('../utils/notificationService');
+const notificationService = require('../services/notificationService');
+
+const router = express.Router();
 
 // Apply authentication middleware to all routes
 router.use(authenticateToken);
@@ -12,17 +10,7 @@ router.use(authenticateToken);
 // POST create a test notification (for testing purposes)
 router.post('/test', async (req, res) => {
     try {
-        const { title = 'Test Notification', message = 'This is a test notification', type = 'info' } = req.body;
-        
-        const notification = await createNotification(
-            req.user.id,
-            type,
-            title,
-            message,
-            'normal',
-            req.user.id
-        );
-
+        const notification = await notificationService.createTestNotification(req.user.id, req.body);
         res.json({
             success: true,
             message: 'Test notification created',
@@ -41,39 +29,11 @@ router.post('/test', async (req, res) => {
 // GET all notifications for the logged-in user
 router.get('/', async (req, res) => {
     try {
-        const { page = 1, limit = 10, unread_only = false, type = null } = req.query;
-        const offset = (page - 1) * limit;
-
-        const whereCondition = { user_id: req.user.id };
-        
-        if (unread_only === 'true') {
-            whereCondition.read = false;
-        }
-        
-        if (type && type !== 'all') {
-            whereCondition.type = type;
-        }
-
-        const notifications = await Notification.findAll({
-            where: whereCondition,
-            order: [['created_at', 'DESC']],
-            limit: parseInt(limit),
-            offset: parseInt(offset)
-        });
-
-        const total = await Notification.count({
-            where: whereCondition
-        });
-
+        const result = await notificationService.getAllNotifications(req.user.id, req.query);
         res.json({
             success: true,
-            data: notifications,
-            pagination: {
-                current_page: parseInt(page),
-                total_pages: Math.ceil(total / limit),
-                total_items: total,
-                items_per_page: parseInt(limit)
-            }
+            data: result.notifications,
+            pagination: result.pagination
         });
     } catch (error) {
         console.error('Error fetching notifications:', error);
@@ -85,23 +45,28 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET unread count
+router.get('/unread/count', async (req, res) => {
+    try {
+        const count = await notificationService.getUnreadCount(req.user.id);
+        res.json({
+            success: true,
+            count
+        });
+    } catch (error) {
+        console.error('Error fetching unread count:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch unread count',
+            error: error.message
+        });
+    }
+});
+
 // GET notification settings
 router.get('/settings', async (req, res) => {
     try {
-        let settings = await NotificationSettings.findOne({
-            where: { user_id: req.user.id }
-        });
-
-        if (!settings) {
-            settings = await NotificationSettings.create({
-                user_id: req.user.id,
-                email_notifications: true,
-                push_notifications: true,
-                booking_reminders: true,
-                system_alerts: true
-            });
-        }
-
+        const settings = await notificationService.getSettings(req.user.id);
         res.json({
             success: true,
             data: settings
@@ -119,22 +84,11 @@ router.get('/settings', async (req, res) => {
 // PUT update notification settings
 router.put('/settings', async (req, res) => {
     try {
-        const settings = await NotificationSettings.findOne({
-            where: { user_id: req.user.id }
-        });
-
-        if (settings) {
-            await settings.update(req.body);
-        } else {
-            await NotificationSettings.create({
-                user_id: req.user.id,
-                ...req.body
-            });
-        }
-
+        const settings = await notificationService.updateSettings(req.user.id, req.body);
         res.json({
             success: true,
-            message: 'Settings updated successfully'
+            message: 'Notification settings updated successfully',
+            data: settings
         });
     } catch (error) {
         console.error('Error updating notification settings:', error);
@@ -149,29 +103,20 @@ router.put('/settings', async (req, res) => {
 // PUT mark notification as read
 router.put('/:id/read', async (req, res) => {
     try {
-        const [updated] = await Notification.update(
-            { read: true },
-            {
-                where: {
-                    id: req.params.id,
-                    user_id: req.user.id
-                }
-            }
-        );
-
-        if (updated) {
-            res.json({
-                success: true,
-                message: 'Notification marked as read'
-            });
-        } else {
-            res.status(404).json({
-                success: false,
-                message: 'Notification not found'
-            });
-        }
+        const notification = await notificationService.markAsRead(req.params.id, req.user.id);
+        res.json({
+            success: true,
+            message: 'Notification marked as read',
+            data: notification
+        });
     } catch (error) {
         console.error('Error marking notification as read:', error);
+        if (error.message === 'Notification not found') {
+            return res.status(404).json({
+                success: false,
+                message: error.message
+            });
+        }
         res.status(500).json({
             success: false,
             message: 'Failed to mark notification as read',
@@ -180,29 +125,40 @@ router.put('/:id/read', async (req, res) => {
     }
 });
 
+// PUT mark all notifications as read
+router.put('/read/all', async (req, res) => {
+    try {
+        await notificationService.markAllAsRead(req.user.id);
+        res.json({
+            success: true,
+            message: 'All notifications marked as read'
+        });
+    } catch (error) {
+        console.error('Error marking all notifications as read:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to mark all notifications as read',
+            error: error.message
+        });
+    }
+});
+
 // DELETE notification
 router.delete('/:id', async (req, res) => {
     try {
-        const deleted = await Notification.destroy({
-            where: {
-                id: req.params.id,
-                user_id: req.user.id
-            }
+        await notificationService.deleteNotification(req.params.id, req.user.id);
+        res.json({
+            success: true,
+            message: 'Notification deleted successfully'
         });
-
-        if (deleted) {
-            res.json({
-                success: true,
-                message: 'Notification deleted successfully'
-            });
-        } else {
-            res.status(404).json({
-                success: false,
-                message: 'Notification not found'
-            });
-        }
     } catch (error) {
         console.error('Error deleting notification:', error);
+        if (error.message === 'Notification not found') {
+            return res.status(404).json({
+                success: false,
+                message: error.message
+            });
+        }
         res.status(500).json({
             success: false,
             message: 'Failed to delete notification',

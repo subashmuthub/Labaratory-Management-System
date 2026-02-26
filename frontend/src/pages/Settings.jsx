@@ -51,7 +51,10 @@ export default function Settings() {
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
     const [success, setSuccess] = useState('')
-    const [activeTab, setActiveTab] = useState('general')
+    const [activeTab, setActiveTab] = useState('stats')
+    const [systemStats, setSystemStats] = useState(null)
+    const [systemHealth, setSystemHealth] = useState(null)
+    const [loadingStats, setLoadingStats] = useState(false)
 
     // Sidebar state
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -176,13 +179,7 @@ export default function Settings() {
     ]
 
     const tabs = [
-        { id: 'general', name: 'General', icon: '⚙️' },
-        { id: 'hours', name: 'Operating Hours', icon: '🕒' },
-        { id: 'booking', name: 'Booking Rules', icon: '📅' },
-        { id: 'notifications', name: 'Notifications', icon: '🔔' },
-        { id: 'maintenance', name: 'Maintenance', icon: '🔧' },
-        { id: 'security', name: 'Security', icon: '🔒' },
-        { id: 'holidays', name: 'Holidays', icon: '🎉' }
+        { id: 'stats', name: 'System Stats', icon: '📊' }
     ]
 
     // Navigation handler
@@ -207,6 +204,40 @@ export default function Settings() {
         }
     }, [token, settings])
 
+    const fetchSystemStats = useCallback(async () => {
+        setLoadingStats(true)
+        try {
+            const [metricsRes, healthRes] = await Promise.all([
+                fetch(`${API_BASE_URL}/system/metrics`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }),
+                fetch(`${API_BASE_URL}/system/health`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                })
+            ])
+
+            if (metricsRes.ok) {
+                const metricsData = await metricsRes.json()
+                setSystemStats(metricsData.data || metricsData)
+            }
+
+            if (healthRes.ok) {
+                const healthData = await healthRes.json()
+                setSystemHealth(healthData.data || healthData)
+            }
+        } catch (err) {
+            console.error('Error fetching system stats:', err)
+        } finally {
+            setLoadingStats(false)
+        }
+    }, [token])
+
     useEffect(() => {
         if (!token) {
             navigate('/login')
@@ -217,7 +248,8 @@ export default function Settings() {
             return
         }
         fetchSettings()
-    }, [token, user, navigate, fetchSettings])
+        fetchSystemStats()
+    }, [token, user, navigate, fetchSettings, fetchSystemStats])
 
     const saveSettings = async () => {
         setSaving(true)
@@ -270,6 +302,166 @@ export default function Settings() {
             </div>
         </div>
     )
+
+    const renderSystemStats = () => {
+        if (loadingStats) {
+            return (
+                <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                </div>
+            )
+        }
+
+        return (
+            <div className="space-y-6">
+                {/* System Health Status */}
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 border border-blue-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                        <span className="mr-2">🏥</span>
+                        System Health
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-white rounded-lg p-4 shadow-sm">
+                            <p className="text-sm text-gray-600 mb-1">Database Status</p>
+                            <p className="text-2xl font-bold text-green-600">
+                                {systemHealth?.database?.status || 'Unknown'}
+                            </p>
+                        </div>
+                        <div className="bg-white rounded-lg p-4 shadow-sm">
+                            <p className="text-sm text-gray-600 mb-1">Server Status</p>
+                            <p className="text-2xl font-bold text-green-600">
+                                {systemHealth?.server?.status || 'Running'}
+                            </p>
+                        </div>
+                        <div className="bg-white rounded-lg p-4 shadow-sm">
+                            <p className="text-sm text-gray-600 mb-1">Uptime</p>
+                            <p className="text-2xl font-bold text-blue-600">
+                                {systemHealth?.uptime || 'N/A'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* System Metrics */}
+                <div className="bg-white rounded-lg p-6 border border-gray-200">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                            <span className="mr-2">📊</span>
+                            System Metrics
+                        </h3>
+                        <button
+                            onClick={fetchSystemStats}
+                            className="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors"
+                        >
+                            Refresh
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-blue-50 rounded-lg p-4">
+                            <p className="text-sm text-gray-600 mb-1">Total Users</p>
+                            <p className="text-3xl font-bold text-blue-600">
+                                {systemStats?.users?.total || 0}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Active: {systemStats?.users?.active || 0}
+                            </p>
+                        </div>
+                        <div className="bg-green-50 rounded-lg p-4">
+                            <p className="text-sm text-gray-600 mb-1">Total Equipment</p>
+                            <p className="text-3xl font-bold text-green-600">
+                                {systemStats?.equipment?.total || 0}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Available: {systemStats?.equipment?.available || 0}
+                            </p>
+                        </div>
+                        <div className="bg-purple-50 rounded-lg p-4">
+                            <p className="text-sm text-gray-600 mb-1">Total Bookings</p>
+                            <p className="text-3xl font-bold text-purple-600">
+                                {systemStats?.bookings?.total || 0}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Active: {systemStats?.bookings?.active || 0}
+                            </p>
+                        </div>
+                        <div className="bg-orange-50 rounded-lg p-4">
+                            <p className="text-sm text-gray-600 mb-1">Total Labs</p>
+                            <p className="text-3xl font-bold text-orange-600">
+                                {systemStats?.labs?.total || 0}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Active: {systemStats?.labs?.active || 0}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Database Stats */}
+                <div className="bg-white rounded-lg p-6 border border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                        <span className="mr-2">💾</span>
+                        Database Statistics
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-gray-50 rounded-lg p-4">
+                            <p className="text-sm text-gray-600 mb-1">Incidents</p>
+                            <p className="text-2xl font-bold text-gray-700">
+                                {systemStats?.incidents?.total || 0}
+                            </p>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-4">
+                            <p className="text-sm text-gray-600 mb-1">Maintenance</p>
+                            <p className="text-2xl font-bold text-gray-700">
+                                {systemStats?.maintenance?.total || 0}
+                            </p>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-4">
+                            <p className="text-sm text-gray-600 mb-1">Reports</p>
+                            <p className="text-2xl font-bold text-gray-700">
+                                {systemStats?.reports?.total || 0}
+                            </p>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-4">
+                            <p className="text-sm text-gray-600 mb-1">Orders</p>
+                            <p className="text-2xl font-bold text-gray-700">
+                                {systemStats?.orders?.total || 0}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Memory & Performance */}
+                {systemHealth?.memory && (
+                    <div className="bg-white rounded-lg p-6 border border-gray-200">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                            <span className="mr-2">⚡</span>
+                            Performance
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-indigo-50 rounded-lg p-4">
+                                <p className="text-sm text-gray-600 mb-1">Memory Used</p>
+                                <p className="text-2xl font-bold text-indigo-600">
+                                    {systemHealth?.memory?.used || 'N/A'}
+                                </p>
+                            </div>
+                            <div className="bg-indigo-50 rounded-lg p-4">
+                                <p className="text-sm text-gray-600 mb-1">Memory Total</p>
+                                <p className="text-2xl font-bold text-indigo-600">
+                                    {systemHealth?.memory?.total || 'N/A'}
+                                </p>
+                            </div>
+                            <div className="bg-indigo-50 rounded-lg p-4">
+                                <p className="text-sm text-gray-600 mb-1">CPU Usage</p>
+                                <p className="text-2xl font-bold text-indigo-600">
+                                    {systemHealth?.cpu?.usage || 'N/A'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        )
+    }
 
     return (
         <div className="min-h-screen w-full bg-gray-50 flex">
@@ -413,9 +605,10 @@ export default function Settings() {
                         <div className="lg:col-span-3">
                             <div className="bg-white rounded-lg shadow-sm p-6">
                                 <h2 className="text-lg font-medium text-gray-900 mb-6">
-                                    {tabs.find(tab => tab.id === activeTab)?.name} Settings
+                                    {tabs.find(tab => tab.id === activeTab)?.name}
                                 </h2>
 
+                                {activeTab === 'stats' && renderSystemStats()}
                                 {activeTab === 'general' && renderGeneralSettings()}
                                 {/* Add other tab content as needed */}
                             </div>
