@@ -210,13 +210,13 @@ function BookingSystem() {
         // Set document title
         document.title = 'Bookings | NEC LabMS'
         
-        if (!token) {
+        if (!isAuthenticated) {
             navigate('/login')
             return
         }
 
         const fetchData = async () => {
-            if (!isAuthenticated || !token) {
+            if (!isAuthenticated) {
                 console.log('Waiting for authentication...')
                 setLoading(false)
                 return
@@ -240,7 +240,7 @@ function BookingSystem() {
                 }
 
                 // Fetch equipment
-                const equipmentResponse = await fetch(`${API_BASE_URL}/equipment?limit=1000`, { headers })
+                const equipmentResponse = await fetch(`${API_BASE_URL}/equipment?limit=1000`, { credentials: 'include', headers })
                 if (equipmentResponse.ok) {
                     const equipmentData = await equipmentResponse.json()
                     setEquipment(equipmentData.data?.equipment || [])
@@ -253,7 +253,7 @@ function BookingSystem() {
                 const bookingsUrl = user?.role === 'admin' 
                     ? `${API_BASE_URL}/bookings` 
                     : `${API_BASE_URL}/bookings?my_bookings=true`
-                const bookingsResponse = await fetch(bookingsUrl, { headers })
+                const bookingsResponse = await fetch(bookingsUrl, { credentials: 'include', headers })
                 if (bookingsResponse.ok) {
                     const bookingsData = await bookingsResponse.json()
                     console.log('📅 Bookings API response:', bookingsData)
@@ -280,7 +280,7 @@ function BookingSystem() {
         }
 
         fetchData()
-    }, [token, isAuthenticated, navigate])
+    }, [isAuthenticated, navigate])
 
     // Filter equipment when lab is selected
     useEffect(() => {
@@ -338,7 +338,7 @@ function BookingSystem() {
     const handleSubmit = async (e) => {
         e.preventDefault()
 
-        if (!isAuthenticated || !token) {
+        if (!isAuthenticated) {
             setError('You must be logged in to create a booking')
             return
         }
