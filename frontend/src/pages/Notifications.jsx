@@ -234,6 +234,9 @@ export default function Notifications() {
     }
 
     const setupWebSocketConnection = () => {
+        // WebSocket disabled - using HTTP polling instead
+        // TODO: Implement WebSocket server on backend before enabling
+        /*
         if (!user?.id) return
 
         const wsUrl = `ws://localhost:8000/ws/notifications/${user.id}`
@@ -255,6 +258,7 @@ export default function Notifications() {
         wsRef.current.onerror = (error) => {
             console.error('WebSocket error:', error)
         }
+        */
     }
 
     // Load data and setup WebSocket
@@ -265,7 +269,7 @@ export default function Notifications() {
         }
 
         loadNotificationsData()
-        setupWebSocketConnection()
+        // setupWebSocketConnection() // Disabled - using HTTP polling instead
 
         // Cleanup WebSocket on unmount
         return () => {
