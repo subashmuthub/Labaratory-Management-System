@@ -13,9 +13,9 @@ class ExcelExportService {
             // Make API call to backend Excel export endpoint
             const response = await fetch('/api/reports/export-excel', {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     reportData,

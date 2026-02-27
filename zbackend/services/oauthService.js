@@ -1,6 +1,5 @@
 // services/oauthService.js - OAuth Integration Service
 const axios = require('axios');
-const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 
 class OAuthService {
@@ -221,17 +220,6 @@ class OAuthService {
         }
     }
 
-    // Generate JWT for OAuth User
-    static generateJWT(user) {
-        const payload = {
-            userId: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-        };
-
-        return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
-    }
 
     // Process Google OAuth
     static async processGoogleOAuth(code) {
@@ -249,19 +237,16 @@ class OAuthService {
             // Create or update user
             const user = await this.createOrUpdateOAuthUser(profile, 'google');
             
-            // Generate JWT
-            const token = this.generateJWT(user);
-
             return {
                 success: true,
                 data: {
-                    token,
                     user: {
                         id: user.id,
                         name: user.name,
                         email: user.email,
                         role: user.role,
-                        isEmailVerified: user.is_email_verified,
+                        is_active: user.is_active,
+                        is_email_verified: user.is_email_verified,
                     }
                 }
             };
@@ -290,19 +275,16 @@ class OAuthService {
             // Create or update user
             const user = await this.createOrUpdateOAuthUser(profile, 'github');
             
-            // Generate JWT
-            const token = this.generateJWT(user);
-
             return {
                 success: true,
                 data: {
-                    token,
                     user: {
                         id: user.id,
                         name: user.name,
                         email: user.email,
                         role: user.role,
-                        isEmailVerified: user.is_email_verified,
+                        is_active: user.is_active,
+                        is_email_verified: user.is_email_verified,
                     }
                 }
             };

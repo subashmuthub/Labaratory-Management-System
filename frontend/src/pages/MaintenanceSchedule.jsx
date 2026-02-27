@@ -47,7 +47,7 @@ export default function MaintenanceSchedule() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
     const [currentTime, setCurrentTime] = useState(new Date())
 
-    const { user, token, logout } = useAuth()
+    const { user, isAuthenticated, logout } = useAuth()
     const navigate = useNavigate()
     const location = useLocation()
     const userMenuRef = useRef(null)
@@ -57,14 +57,14 @@ export default function MaintenanceSchedule() {
     const fetchNavigationStats = async () => {
         try {
             const results = await Promise.allSettled([
-                fetch('/api/labs/stats', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-                fetch('/api/equipment/stats', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-                fetch('/api/bookings/stats', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-                fetch('/api/users/stats', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-                fetch('/api/incidents/stats', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-                fetch('/api/orders/stats', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-                fetch('/api/training/stats', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-                fetch('/api/maintenance/stats', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
+                fetch('/api/labs/stats', { credentials: 'include', headers: { 'Content-Type': 'application/json' } }).then(r => r.json()),
+                fetch('/api/equipment/stats', { credentials: 'include', headers: { 'Content-Type': 'application/json' } }).then(r => r.json()),
+                fetch('/api/bookings/stats', { credentials: 'include', headers: { 'Content-Type': 'application/json' } }).then(r => r.json()),
+                fetch('/api/users/stats', { credentials: 'include', headers: { 'Content-Type': 'application/json' } }).then(r => r.json()),
+                fetch('/api/incidents/stats', { credentials: 'include', headers: { 'Content-Type': 'application/json' } }).then(r => r.json()),
+                fetch('/api/orders/stats', { credentials: 'include', headers: { 'Content-Type': 'application/json' } }).then(r => r.json()),
+                fetch('/api/training/stats', { credentials: 'include', headers: { 'Content-Type': 'application/json' } }).then(r => r.json()),
+                fetch('/api/maintenance/stats', { credentials: 'include', headers: { 'Content-Type': 'application/json' } }).then(r => r.json())
             ])
 
             const [labsRes, equipmentRes, bookingsRes, usersRes, incidentsRes, ordersRes, trainingRes, maintenanceRes] = results
@@ -110,13 +110,13 @@ export default function MaintenanceSchedule() {
 
     // Load data on component mount
     useEffect(() => {
-        if (!token) {
+        if (!isAuthenticated) {
             navigate('/login')
             return
         }
         loadMaintenanceData()
         fetchNavigationStats()
-    }, [token, navigate])
+    }, [isAuthenticated, navigate])
 
     const loadMaintenanceData = async () => {
         setLoading(true)

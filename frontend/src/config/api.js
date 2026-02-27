@@ -8,8 +8,7 @@ const useProxy = isDevelopment && window.location.hostname === 'localhost';
 export const apiConfig = {
     baseURL: useProxy ? '' : API_BASE_URL, // Use empty string for proxy, full URL for direct calls
     fullURL: API_BASE_URL, // Always available full URL for direct calls if needed
-    getHeaders: (token) => ({
-        'Authorization': token ? `Bearer ${token}` : '',
+    getHeaders: () => ({
         'Content-Type': 'application/json'
     })
 };

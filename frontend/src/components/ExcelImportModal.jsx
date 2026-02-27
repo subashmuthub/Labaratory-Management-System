@@ -3,7 +3,7 @@ import { useState, useRef } from 'react'
 import * as XLSX from 'xlsx'
 import { apiConfig } from '../config/api'
 
-const ExcelImportModal = ({ isOpen, onClose, onImportComplete, labs, token }) => {
+const ExcelImportModal = ({ isOpen, onClose, onImportComplete, labs }) => {
     const [file, setFile] = useState(null)
     const [isDragging, setIsDragging] = useState(false)
     const [isUploading, setIsUploading] = useState(false)
@@ -388,8 +388,8 @@ const ExcelImportModal = ({ isOpen, onClose, onImportComplete, labs, token }) =>
             // Call bulk import endpoint
             const response = await fetch(`${apiConfig.baseURL}/equipment/bulk-import`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ equipmentData })

@@ -36,7 +36,7 @@ export default function UserManagement() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
     const [currentTime, setCurrentTime] = useState(new Date())
 
-    const { user, token, logout, isAuthenticated } = useAuth()
+    const { user, logout, isAuthenticated } = useAuth()
     const navigate = useNavigate()
     const location = useLocation()
     const userMenuRef = useRef(null)
@@ -208,8 +208,8 @@ export default function UserManagement() {
         // Set document title
         document.title = 'Users | NEC LabMS'
         
-        // Check if user has token
-        if (!token) {
+        // Check if user is authenticated
+        if (!isAuthenticated) {
             navigate('/login')
             return
         }
@@ -221,7 +221,7 @@ export default function UserManagement() {
             setError('You do not have permission to access user management')
             setLoading(false)
         }
-    }, [token, user, navigate])
+    }, [isAuthenticated, user, navigate])
 
     const loadUserData = async () => {
         setLoading(true)

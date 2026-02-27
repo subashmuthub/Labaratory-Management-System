@@ -1,40 +1,47 @@
-// middleware/auth.js - Cookie-Based Authentication
-const jwt = require('jsonwebtoken');
+// middleware/auth.js - Session-Based Authentication
 const { User } = require('../models');
+const { getSession } = require('../utils/sessionManager');
 
-// JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
-
-// Cookie-based authentication middleware
+// Session-based authentication middleware
 const authenticateToken = async (req, res, next) => {
     try {
         console.log('🔐 Authentication middleware triggered');
         console.log('Cookies:', req.cookies ? 'Cookies present' : 'No cookies');
 
-        // Get token from cookie
-        const token = req.cookies?.authToken;
+        // Get session ID from cookie
+        const sessionId = req.cookies?.sessionId;
 
-        if (!token || token === 'null' || token === 'undefined') {
-            console.log('❌ No auth token in cookies');
+        if (!sessionId || sessionId === 'null' || sessionId === 'undefined') {
+            console.log('❌ No session ID in cookies');
             return res.status(401).json({
                 success: false,
-                message: 'Access denied. No token provided.'
+                message: 'Access denied. No session provided.'
             });
         }
 
-        console.log('🎫 Token extracted from cookie');
+        console.log('🎫 Session ID extracted from cookie');
 
-        // Verify token
-        const decoded = jwt.verify(token, JWT_SECRET);
-        console.log('✅ Token verified for user:', decoded.email);
+        // Get session data
+        const session = getSession(sessionId);
+        
+        if (!session) {
+            console.log('❌ Invalid or expired session');
+            return res.status(401).json({
+                success: false,
+                message: 'Access denied. Invalid or expired session.'
+            });
+        }
+
+        console.log('✅ Session verified for user:', session.email);
 
         // Get user from database to ensure they still exist and are active
-        const user = await User.findByPk(decoded.userId, {
-            attributes: ['id', 'name', 'email', 'role', 'is_active'] // ✅ ADDED: Only select needed fields
+        const user = await User.findByPk(session.userId, {
+            attributes: ['id', 'name', 'email', 'role', 'is_active']
         });
 
         if (!user) {
-            console.log('❌ User not found in database:', decoded.userId);
+            console.log('❌ User not found in database:', session.userId);
+            // Session cleanup is handled by sessionManager
             return res.status(401).json({
                 success: false,
                 message: 'Access denied. User not found.'
@@ -49,9 +56,9 @@ const authenticateToken = async (req, res, next) => {
             });
         }
 
-        // ✅ FIXED: Consistent user object structure
+        // Set user object for routes
         req.user = {
-            userId: user.id, // This matches what your routes expect
+            userId: user.id,
             id: user.id,
             email: user.email,
             role: user.role,
@@ -64,22 +71,7 @@ const authenticateToken = async (req, res, next) => {
     } catch (error) {
         console.error('💥 Auth middleware error:', error.message);
 
-        // Handle specific JWT errors
-        if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({
-                success: false,
-                message: 'Access denied. Invalid token.'
-            });
-        }
-
-        if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({
-                success: false,
-                message: 'Access denied. Token expired.'
-            });
-        }
-
-        // ✅ ADDED: Handle database connection errors
+        // Handle database connection errors
         if (error.name === 'SequelizeConnectionError') {
             return res.status(500).json({
                 success: false,
@@ -144,26 +136,26 @@ const requireLabTechnicianOrAdmin = (req, res, next) => {
 // Student, Teacher, or Admin role middleware (authenticated users)
 const requireAuthenticated = authenticateToken;
 
-// Optional authentication middleware (doesn't block if no token)
+// Optional authentication middleware (doesn't block if no session)
 const optionalAuth = async (req, res, next) => {
     try {
-        const authHeader = req.headers.authorization;
+        const sessionId = req.cookies?.sessionId;
 
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        if (!sessionId || sessionId === 'null' || sessionId === 'undefined') {
             req.user = null;
             return next();
         }
 
-        const token = authHeader.substring(7);
-
-        if (!token || token === 'null' || token === 'undefined') {
+        // Try to get session
+        const session = getSession(sessionId);
+        
+        if (!session) {
             req.user = null;
             return next();
         }
 
-        // Try to verify token
-        const decoded = jwt.verify(token, JWT_SECRET);
-        const user = await User.findByPk(decoded.userId, {
+        // Get user from database
+        const user = await User.findByPk(session.userId, {
             attributes: ['id', 'name', 'email', 'role', 'is_active']
         });
 
@@ -181,7 +173,7 @@ const optionalAuth = async (req, res, next) => {
 
         next();
     } catch (error) {
-        // If token is invalid, continue without authentication
+        // If session verification fails, continue without authentication
         req.user = null;
         next();
     }

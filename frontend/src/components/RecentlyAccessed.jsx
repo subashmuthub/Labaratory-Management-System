@@ -5,20 +5,20 @@ import { useNavigate } from 'react-router-dom';
 const RecentlyAccessed = ({ className = "", limit = 5 }) => {
     const [recentItems, setRecentItems] = useState([]);
     const [loading, setLoading] = useState(false);
-    const { token } = useAuth();
+    const { isAuthenticated } = useAuth();
     const navigate = useNavigate();
     
     const API_BASE_URL = '/api';
     
     useEffect(() => {
         const fetchData = async () => {
-            if (!token) return;
+            if (!isAuthenticated) return;
             
             try {
                 setLoading(true);
                 const response = await fetch(`${API_BASE_URL}/recent?limit=${limit}`, {
+                    credentials: 'include',
                     headers: {
-                        'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     }
                 });
@@ -35,7 +35,7 @@ const RecentlyAccessed = ({ className = "", limit = 5 }) => {
         };
         
         fetchData();
-    }, [token, limit]);
+    }, [isAuthenticated, limit]);
 
     
     const handleItemClick = (item) => {
@@ -88,8 +88,8 @@ const RecentlyAccessed = ({ className = "", limit = 5 }) => {
         try {
             const response = await fetch(`${API_BASE_URL}/recent/clear`, {
                 method: 'DELETE',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             });

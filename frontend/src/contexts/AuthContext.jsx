@@ -306,7 +306,6 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const logout = () => {
     const logout = async () => {
         console.log('🚪 AuthContext: User explicitly logging out');
 

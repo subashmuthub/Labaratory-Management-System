@@ -9,9 +9,8 @@ export function ProtectedRoute({ children, requiredRole = null }) {
     // Check for stored authentication immediately
     const getStoredAuth = () => {
         try {
-            const storedToken = localStorage.getItem('token')
             const storedUser = localStorage.getItem('user')
-            return storedToken && storedUser ? JSON.parse(storedUser) : null
+            return storedUser ? JSON.parse(storedUser) : null
         } catch (error) {
             console.error('Error reading stored auth:', error)
             return null

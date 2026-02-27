@@ -43,8 +43,7 @@ function LoginPage() {
             const result = await handleOAuthCallback(provider, code)
             
             if (result.success) {
-                // Store auth data
-                localStorage.setItem('token', result.token)
+                // Store user data (session is stored in cookie by backend)
                 localStorage.setItem('user', JSON.stringify(result.user))
                 
                 navigate('/dashboard', { replace: true })

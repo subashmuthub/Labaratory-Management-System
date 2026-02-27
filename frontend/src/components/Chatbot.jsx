@@ -14,7 +14,7 @@ export default function IntelligentChatbot() {
 
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
-    const { user, token } = useAuth();
+    const { user, isAuthenticated } = useAuth();
 
     const API_BASE_URL = '/api';
 
@@ -109,7 +109,7 @@ export default function IntelligentChatbot() {
 
         try {
             // Check if user is authenticated
-            if (!token || !user) {
+            if (!isAuthenticated || !user) {
                 const errorMessage = {
                     id: Date.now() + 1,
                     text: "Please log in to use the chatbot features. 🔐",
@@ -125,8 +125,8 @@ export default function IntelligentChatbot() {
             // Always use the main chat endpoint
             const response = await fetch(`${API_BASE_URL}/chatbot/chat`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({

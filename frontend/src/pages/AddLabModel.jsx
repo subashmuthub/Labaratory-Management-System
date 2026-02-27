@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 function AddLab() {
     const navigate = useNavigate()
     const location = useLocation()
-    const { user, token, logout } = useAuth()
+    const { user, isAuthenticated, logout } = useAuth()
 
     // State for form data
     const [formData, setFormData] = useState({
@@ -210,9 +210,9 @@ function AddLab() {
         try {
             const response = await fetch('/api/labs', {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(formData)
             })

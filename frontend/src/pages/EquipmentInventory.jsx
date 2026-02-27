@@ -7,7 +7,7 @@ import { Sidebar, AppHeader, getNavigationItems } from '../components/common/Nav
 
 // Professional Add Equipment Modal Component with Dynamic Fields
 function AddEquipmentModal({ isOpen, onClose, onEquipmentAdded, labs }) {
-    const { token } = useAuth()
+    const { isAuthenticated } = useAuth()
     const API_BASE_URL = '/api' // Use relative URL for proxy
     const [formData, setFormData] = useState({
         name: '',
@@ -541,9 +541,9 @@ function AddEquipmentModal({ isOpen, onClose, onEquipmentAdded, labs }) {
         try {
             const response = await fetch(`${API_BASE_URL}/equipment`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(formData)
             })
@@ -956,7 +956,7 @@ function AddEquipmentModal({ isOpen, onClose, onEquipmentAdded, labs }) {
 
 // Edit Equipment Modal Component
 function EditEquipmentModal({ isOpen, onClose, equipment, onEquipmentUpdated }) {
-    const { token } = useAuth()
+    const { isAuthenticated } = useAuth()
     const [formData, setFormData] = useState({
         name: equipment?.name || '',
         description: equipment?.description || '',
@@ -1010,9 +1010,9 @@ function EditEquipmentModal({ isOpen, onClose, equipment, onEquipmentUpdated }) 
         try {
             const response = await fetch(`/api/equipment/${equipment.id}`, {
                 method: 'PUT',
+                credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(formData)
             })
@@ -1197,7 +1197,7 @@ function EditEquipmentModal({ isOpen, onClose, equipment, onEquipmentUpdated }) 
 
 // Main Equipment Inventory Component - Enhanced UI
 export default function EquipmentInventory() {
-    const { token, user, logout } = useAuth()
+    const { isAuthenticated, user, logout } = useAuth()
     const navigate = useNavigate()
     const location = useLocation()
 
@@ -1275,7 +1275,7 @@ export default function EquipmentInventory() {
         document.title = 'Equipment | NEC LabMS'
         
         const fetchData = async () => {
-            if (!token) {
+            if (!isAuthenticated) {
                 navigate('/login')
                 return
             }
@@ -1285,7 +1285,6 @@ export default function EquipmentInventory() {
                 setError('')
 
                 const headers = {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
 
@@ -1299,13 +1298,13 @@ export default function EquipmentInventory() {
                 // Add limit to get all equipment items (default backend limit is 50)
                 queryParams.append('limit', '1000')
 
-                const labsResponse = await fetch(`${API_BASE_URL}/labs`, { headers })
+                const labsResponse = await fetch(`${API_BASE_URL}/labs`, { credentials: 'include', headers })
                 if (labsResponse.ok) {
                     const labsData = await labsResponse.json()
                     setLabs(labsData.data?.labs || [])
                 }
 
-                const equipmentResponse = await fetch(`${API_BASE_URL}/equipment?${queryParams}`, { headers })
+                const equipmentResponse = await fetch(`${API_BASE_URL}/equipment?${queryParams}`, { credentials: 'include', headers })
                 if (equipmentResponse.ok) {
                     const equipmentData = await equipmentResponse.json()
                     setEquipment(equipmentData.data?.equipment || [])
@@ -1334,7 +1333,7 @@ export default function EquipmentInventory() {
         }
 
         fetchData()
-    }, [filters, token, navigate])
+    }, [filters, isAuthenticated, navigate])
 
     const handleFilterChange = (key, value) => {
         setFilters(prev => ({
@@ -1347,7 +1346,6 @@ export default function EquipmentInventory() {
         try {
             setLoading(true)
             const headers = {
-                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             }
 
@@ -1359,7 +1357,7 @@ export default function EquipmentInventory() {
             })
             queryParams.append('limit', '1000')
 
-            const equipmentResponse = await fetch(`${API_BASE_URL}/equipment?${queryParams}`, { headers })
+            const equipmentResponse = await fetch(`${API_BASE_URL}/equipment?${queryParams}`, { credentials: 'include', headers })
             if (equipmentResponse.ok) {
                 const equipmentData = await equipmentResponse.json()
                 setEquipment(equipmentData.data?.equipment || [])
@@ -1384,12 +1382,12 @@ export default function EquipmentInventory() {
     const handleStatusUpdate = async (equipmentId, newStatus) => {
         try {
             const headers = {
-                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             }
 
             const response = await fetch(`${API_BASE_URL}/equipment/${equipmentId}`, {
                 method: 'PUT',
+                credentials: 'include',
                 headers,
                 body: JSON.stringify({ status: newStatus })
             })
@@ -1424,12 +1422,12 @@ export default function EquipmentInventory() {
         if (window.confirm('Are you sure you want to delete this equipment?')) {
             try {
                 const headers = {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
 
                 const response = await fetch(`${API_BASE_URL}/equipment/${equipmentId}`, {
                     method: 'DELETE',
+                    credentials: 'include',
                     headers
                 })
 
@@ -1476,12 +1474,12 @@ export default function EquipmentInventory() {
             try {
                 setLoading(true)
                 const headers = {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
 
                 const response = await fetch(`${API_BASE_URL}/equipment/lab/${filters.lab_id}/bulk`, {
                     method: 'DELETE',
+                    credentials: 'include',
                     headers
                 })
 
@@ -1962,7 +1960,6 @@ export default function EquipmentInventory() {
                         reloadEquipment()
                     }}
                     labs={labs}
-                    token={token}
                 />
             )}
         </div>

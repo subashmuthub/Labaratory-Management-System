@@ -374,11 +374,11 @@ export const reportsAPI = {
     getSchedules: () => apiCall('/reports/schedules/list'),
     downloadExcelReport: async (id, filename) => {
         try {
-            const token = localStorage.getItem('token');
             const response = await fetch(`${API_BASE_URL}/reports/download/${id}/excel`, {
+                credentials: 'include',
                 headers: {
-                    ...(token && { Authorization: `Bearer ${token}` }),
-                },
+                    'Content-Type': 'application/json'
+                }
             });
 
             if (!response.ok) {
@@ -401,12 +401,11 @@ export const reportsAPI = {
     },
     generateAndDownloadExcel: async (reportData) => {
         try {
-            const token = localStorage.getItem('token');
             const response = await fetch(`${API_BASE_URL}/reports/generate-excel`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { Authorization: `Bearer ${token}` }),
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(reportData)
             });
@@ -431,12 +430,11 @@ export const reportsAPI = {
     },
     generateComprehensiveExcel: async (dateRange, customStartDate = null, customEndDate = null) => {
         try {
-            const token = localStorage.getItem('token');
             const response = await fetch(`${API_BASE_URL}/reports/generate-comprehensive-excel`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { Authorization: `Bearer ${token}` }),
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ dateRange, customStartDate, customEndDate })
             });

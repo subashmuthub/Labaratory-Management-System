@@ -59,7 +59,7 @@ export default function Settings() {
     // Sidebar state
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
-    const { user, token } = useAuth()
+    const { user, isAuthenticated } = useAuth()
     const navigate = useNavigate()
     const location = useLocation()
     const API_BASE_URL = '/api'
@@ -190,8 +190,8 @@ export default function Settings() {
     const fetchSettings = useCallback(async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/settings`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -202,21 +202,21 @@ export default function Settings() {
         } catch (err) {
             console.error('Error fetching settings:', err)
         }
-    }, [token, settings])
+    }, [isAuthenticated, settings])
 
     const fetchSystemStats = useCallback(async () => {
         setLoadingStats(true)
         try {
             const [metricsRes, healthRes] = await Promise.all([
                 fetch(`${API_BASE_URL}/system/metrics`, {
+                    credentials: 'include',
                     headers: {
-                        'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     }
                 }),
                 fetch(`${API_BASE_URL}/system/health`, {
+                    credentials: 'include',
                     headers: {
-                        'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     }
                 })
@@ -236,10 +236,10 @@ export default function Settings() {
         } finally {
             setLoadingStats(false)
         }
-    }, [token])
+    }, [isAuthenticated])
 
     useEffect(() => {
-        if (!token) {
+        if (!isAuthenticated) {
             navigate('/login')
             return
         }
@@ -249,7 +249,7 @@ export default function Settings() {
         }
         fetchSettings()
         fetchSystemStats()
-    }, [token, user, navigate, fetchSettings, fetchSystemStats])
+    }, [isAuthenticated, user, navigate, fetchSettings, fetchSystemStats])
 
     const saveSettings = async () => {
         setSaving(true)
@@ -258,8 +258,8 @@ export default function Settings() {
         try {
             const response = await fetch(`${API_BASE_URL}/settings`, {
                 method: 'PUT',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ settings })

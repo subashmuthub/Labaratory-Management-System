@@ -1,3 +1,7 @@
+// ⚠️ LEGACY FILE: This service is deprecated and replaced by session-based auth in enhancedAuth.js
+// This file uses JWT tokens and is no longer used by the application
+// Kept for backward compatibility - consider removing in future versions
+
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');

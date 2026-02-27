@@ -26,7 +26,7 @@ export default function Calendar() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
     const [currentTime, setCurrentTime] = useState(new Date())
 
-    const { user, token, logout } = useAuth()
+    const { user, isAuthenticated, logout } = useAuth()
     const navigate = useNavigate()
     const location = useLocation()
     const userMenuRef = useRef(null)
@@ -210,22 +210,22 @@ export default function Calendar() {
         // Set document title
         document.title = 'Calendar | NEC LabMS'
         
-        if (!token) {
+        if (!isAuthenticated) {
             navigate('/login')
             return
         }
         fetchData()
-    }, [token, navigate])
+    }, [isAuthenticated, navigate])
 
     // Auto-refresh data every 30 seconds
     useEffect(() => {
         const interval = setInterval(() => {
-            if (token) {
+            if (isAuthenticated) {
                 fetchBookings()
             }
         }, 30000)
         return () => clearInterval(interval)
-    }, [token])
+    }, [isAuthenticated])
 
     const fetchData = async () => {
         setLoading(true)
@@ -248,8 +248,8 @@ export default function Calendar() {
     const fetchBookings = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/bookings`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -268,8 +268,8 @@ export default function Calendar() {
     const fetchEquipment = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/equipment?limit=1000`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -286,8 +286,8 @@ export default function Calendar() {
     const fetchLabs = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/labs`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -304,8 +304,8 @@ export default function Calendar() {
     const fetchUsers = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/users`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -486,8 +486,8 @@ export default function Calendar() {
         try {
             const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/status`, {
                 method: 'PATCH',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ status: newStatus })
@@ -513,8 +513,8 @@ export default function Calendar() {
         try {
             const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}`, {
                 method: 'DELETE',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })

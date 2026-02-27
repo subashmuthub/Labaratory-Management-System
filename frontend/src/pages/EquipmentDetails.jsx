@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 
 function EquipmentDetails() {
     const { id } = useParams()
-    const { token } = useAuth()
+    const { isAuthenticated } = useAuth()
     const navigate = useNavigate()
     const [equipment, setEquipment] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -13,7 +13,7 @@ function EquipmentDetails() {
 
     useEffect(() => {
         const fetchEquipment = async () => {
-            if (!token) {
+            if (!isAuthenticated) {
                 navigate('/login')
                 return
             }
@@ -21,8 +21,8 @@ function EquipmentDetails() {
             try {
                 setLoading(true)
                 const response = await fetch(`/api/equipment/${id}`, {
+                    credentials: 'include',
                     headers: {
-                        'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     }
                 })
@@ -46,7 +46,7 @@ function EquipmentDetails() {
         }
 
         fetchEquipment()
-    }, [id, token, navigate])
+    }, [id, isAuthenticated, navigate])
 
     if (loading) {
         return (

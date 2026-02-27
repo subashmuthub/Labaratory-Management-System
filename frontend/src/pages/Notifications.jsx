@@ -34,7 +34,7 @@ export default function Notifications() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
     const [currentTime, setCurrentTime] = useState(new Date())
 
-    const { user, token, logout } = useAuth()
+    const { user, isAuthenticated, logout } = useAuth()
     const navigate = useNavigate()
     const location = useLocation()
     const userMenuRef = useRef(null)
@@ -236,7 +236,7 @@ export default function Notifications() {
     const setupWebSocketConnection = () => {
         if (!user?.id) return
 
-        const wsUrl = `ws://localhost:8000/ws/notifications/${user.id}?token=${token}`
+        const wsUrl = `ws://localhost:8000/ws/notifications/${user.id}`
         wsRef.current = new WebSocket(wsUrl)
 
         wsRef.current.onopen = () => {
@@ -259,7 +259,7 @@ export default function Notifications() {
 
     // Load data and setup WebSocket
     useEffect(() => {
-        if (!token) {
+        if (!isAuthenticated) {
             navigate('/login')
             return
         }
@@ -273,7 +273,7 @@ export default function Notifications() {
                 wsRef.current.close()
             }
         }
-    }, [token, navigate])
+    }, [isAuthenticated, navigate])
 
     // Auto-refresh notifications every 30 seconds
     useEffect(() => {
@@ -307,8 +307,8 @@ export default function Notifications() {
     const fetchNotifications = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/notifications`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -335,8 +335,8 @@ export default function Notifications() {
     const fetchNotificationSettings = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/notifications/settings`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -356,8 +356,8 @@ export default function Notifications() {
         try {
             const response = await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
                 method: 'PUT',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -379,8 +379,8 @@ export default function Notifications() {
         try {
             const response = await fetch(`${API_BASE_URL}/notifications/mark-all-read`, {
                 method: 'PUT',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -401,8 +401,8 @@ export default function Notifications() {
         try {
             const response = await fetch(`${API_BASE_URL}/notifications/${id}`, {
                 method: 'DELETE',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -427,8 +427,8 @@ export default function Notifications() {
         try {
             const response = await fetch(`${API_BASE_URL}/notifications`, {
                 method: 'DELETE',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -449,8 +449,8 @@ export default function Notifications() {
         try {
             const response = await fetch(`${API_BASE_URL}/notifications/settings`, {
                 method: 'PUT',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(settings)
@@ -482,8 +482,8 @@ export default function Notifications() {
         try {
             const response = await fetch(`${API_BASE_URL}/notifications`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(notificationData)
@@ -1186,12 +1186,12 @@ export default function Notifications() {
 }
 
 // Export utility functions for other components to create notifications
-export const createNotification = async (token, notificationData) => {
+export const createNotification = async (notificationData) => {
     try {
         const response = await fetch('/api/notifications', {
             method: 'POST',
+            credentials: 'include',
             headers: {
-                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(notificationData)

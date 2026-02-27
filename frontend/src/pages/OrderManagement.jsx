@@ -34,7 +34,7 @@ export default function OrderManagement() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
     const [currentTime, setCurrentTime] = useState(new Date())
 
-    const { user, token, logout } = useAuth()
+    const { user, isAuthenticated, logout } = useAuth()
     const navigate = useNavigate()
     const location = useLocation()
     const userMenuRef = useRef(null)
@@ -212,7 +212,7 @@ export default function OrderManagement() {
         //     navigate('/dashboard')
         //     return
         // }
-        if (user && token) {
+        if (user && isAuthenticated) {
             fetchOrders()
         }
     }, [user, navigate])
@@ -257,8 +257,8 @@ export default function OrderManagement() {
             setError('')
 
             const response = await fetch(`${API_BASE_URL}/orders`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -286,8 +286,8 @@ export default function OrderManagement() {
         try {
             const response = await fetch(`${API_BASE_URL}/orders`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(orderData)
@@ -318,8 +318,8 @@ export default function OrderManagement() {
         try {
             const response = await fetch(`${API_BASE_URL}/orders/${id}`, {
                 method: 'PUT',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(orderData)
@@ -357,8 +357,8 @@ export default function OrderManagement() {
         try {
             const response = await fetch(`${API_BASE_URL}/orders/${id}`, {
                 method: 'DELETE',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })

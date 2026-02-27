@@ -8,7 +8,7 @@ import { Sidebar, AppHeader, getNavigationItems } from '../components/common/Nav
 const API_BASE_URL = '/api'
 
 export default function EnhancedReportsAnalyticsNew() {
-    const { user, token } = useAuth()
+    const { user, isAuthenticated } = useAuth()
     const navigate = useNavigate()
     const location = useLocation()
     
@@ -100,19 +100,18 @@ export default function EnhancedReportsAnalyticsNew() {
         try {
             setLoading(true)
             const headers = {
-                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             }
             
             // Fetch labs data
-            const labsResponse = await fetch(`${API_BASE_URL}/labs`, { headers })
+            const labsResponse = await fetch(`${API_BASE_URL}/labs`, { credentials: 'include', headers })
             if (labsResponse.ok) {
                 const labsData = await labsResponse.json()
                 setLabs(labsData.data?.labs || [])
             }
             
             // Fetch real equipment data for initial report display
-            const equipmentResponse = await fetch(`${API_BASE_URL}/equipment?limit=1000`, { headers })
+            const equipmentResponse = await fetch(`${API_BASE_URL}/equipment?limit=1000`, { credentials: 'include', headers })
             if (equipmentResponse.ok) {
                 const equipmentData = await equipmentResponse.json()
                 const equipmentList = equipmentData.data?.equipment || []
@@ -146,32 +145,32 @@ export default function EnhancedReportsAnalyticsNew() {
         } finally {
             setLoading(false)
         }
-    }, [token])
+    }, [])
 
     useEffect(() => {
         // Set document title
         document.title = 'Reports | NEC LabMS'
         
-        if (token) {
+        if (isAuthenticated) {
             fetchInitialData()
             fetchStats()
         }
-    }, [token, fetchInitialData])
+    }, [isAuthenticated, fetchInitialData])
 
     // Fetch stats for navigation badges
     const fetchStats = async () => {
         try {
-            const headers = { 'Authorization': `Bearer ${token}` }
+            const headers = { 'Content-Type': 'application/json' }
             
             const [labsRes, equipmentRes, bookingsRes, incidentsRes, ordersRes, usersRes, trainingRes, maintenanceRes] = await Promise.allSettled([
-                fetch(`${API_BASE_URL}/labs/stats`, { headers }),
-                fetch(`${API_BASE_URL}/equipment/stats`, { headers }),
-                fetch(`${API_BASE_URL}/bookings/stats`, { headers }),
-                fetch(`${API_BASE_URL}/incidents/stats`, { headers }),
-                fetch(`${API_BASE_URL}/orders/stats`, { headers }),
-                fetch(`${API_BASE_URL}/users/stats`, { headers }),
-                fetch(`${API_BASE_URL}/training/stats`, { headers }),
-                fetch(`${API_BASE_URL}/maintenance/stats`, { headers })
+                fetch(`${API_BASE_URL}/labs/stats`, { credentials: 'include', headers }),
+                fetch(`${API_BASE_URL}/equipment/stats`, { credentials: 'include', headers }),
+                fetch(`${API_BASE_URL}/bookings/stats`, { credentials: 'include', headers }),
+                fetch(`${API_BASE_URL}/incidents/stats`, { credentials: 'include', headers }),
+                fetch(`${API_BASE_URL}/orders/stats`, { credentials: 'include', headers }),
+                fetch(`${API_BASE_URL}/users/stats`, { credentials: 'include', headers }),
+                fetch(`${API_BASE_URL}/training/stats`, { credentials: 'include', headers }),
+                fetch(`${API_BASE_URL}/maintenance/stats`, { credentials: 'include', headers })
             ])
 
             const newStats = { ...stats }
@@ -269,8 +268,8 @@ export default function EnhancedReportsAnalyticsNew() {
     // Fetch Equipment Inventory Report
     const fetchEquipmentReport = async () => {
         const response = await fetch(`${API_BASE_URL}/equipment?limit=1000`, {
+            credentials: 'include',
             headers: {
-                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             }
         })
@@ -298,8 +297,8 @@ export default function EnhancedReportsAnalyticsNew() {
     const fetchMaintenanceReport = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/maintenance`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -331,8 +330,8 @@ export default function EnhancedReportsAnalyticsNew() {
     const fetchLabManagementReport = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/labs`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -364,8 +363,8 @@ export default function EnhancedReportsAnalyticsNew() {
     const fetchIncidentsReport = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/incidents`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -399,8 +398,8 @@ export default function EnhancedReportsAnalyticsNew() {
     const fetchOrdersReport = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/orders`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -433,8 +432,8 @@ export default function EnhancedReportsAnalyticsNew() {
     const fetchBookingReport = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/bookings`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })

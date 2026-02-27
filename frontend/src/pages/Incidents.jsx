@@ -35,7 +35,7 @@ export default function Incidents() {
         assigned_to: ''
     })
 
-    const { user, token, logout } = useAuth()
+    const { user, isAuthenticated, logout } = useAuth()
     const navigate = useNavigate()
     const location = useLocation()
     const userMenuRef = useRef(null)
@@ -222,7 +222,7 @@ export default function Incidents() {
         // Set document title
         document.title = 'Incidents | NEC LabMS'
         
-        if (!token) {
+        if (!isAuthenticated) {
             navigate('/login')
             return
         }
@@ -230,7 +230,7 @@ export default function Incidents() {
         fetchEquipment()
         fetchUsers()
         fetchNotificationCount()
-    }, [token, navigate])
+    }, [isAuthenticated, navigate])
 
     // Filter incidents
     useEffect(() => {
@@ -255,8 +255,8 @@ export default function Incidents() {
     const fetchNotificationCount = useCallback(async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/notifications?unread_only=true`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -272,15 +272,15 @@ export default function Incidents() {
             console.error('Error fetching notification count:', error)
             setUnreadCount(0)
         }
-    }, [token])
+    }, [])
 
     // ✅ FIXED: Safe incidents fetch with proper error handling
     const fetchIncidents = async () => {
         try {
-            console.log('🔍 Fetching incidents with token:', token ? 'Present' : 'Missing')
+            console.log('🔍 Fetching incidents')
             const response = await fetch(`${API_BASE_URL}/incidents`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -318,8 +318,8 @@ export default function Incidents() {
         try {
             console.log('🔍 Fetching equipment...')
             const response = await fetch(`${API_BASE_URL}/equipment?limit=1000`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -349,8 +349,8 @@ export default function Incidents() {
         try {
             console.log('🔍 Fetching users...')
             const response = await fetch(`${API_BASE_URL}/users`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -414,8 +414,8 @@ export default function Incidents() {
 
             const response = await fetch(url, {
                 method,
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
@@ -471,8 +471,8 @@ export default function Incidents() {
         try {
             const response = await fetch(`${API_BASE_URL}/incidents/${id}`, {
                 method: 'DELETE',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -494,8 +494,8 @@ export default function Incidents() {
         try {
             const response = await fetch(`${API_BASE_URL}/incidents/${id}/status`, {
                 method: 'PATCH',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ status: newStatus })

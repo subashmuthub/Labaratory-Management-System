@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
 function BookingSystem() {
-    const { token, isAuthenticated, user, logout } = useAuth()
+    const { isAuthenticated, user, logout } = useAuth()
     const navigate = useNavigate()
     const location = useLocation()
     const userMenuRef = useRef(null)
@@ -227,12 +227,11 @@ function BookingSystem() {
                 setError('')
 
                 const headers = {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
 
                 // Fetch labs
-                const labsResponse = await fetch(`${API_BASE_URL}/labs`, { headers })
+                const labsResponse = await fetch(`${API_BASE_URL}/labs`, { credentials: 'include', headers })
                 if (labsResponse.ok) {
                     const labsData = await labsResponse.json()
                     setLabs(labsData.data?.labs || [])
@@ -371,8 +370,8 @@ function BookingSystem() {
 
             const response = await fetch(`${API_BASE_URL}/bookings`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(bookingData)
@@ -387,8 +386,8 @@ function BookingSystem() {
                     : `${API_BASE_URL}/bookings?my_bookings=true`
                 
                 const refreshResponse = await fetch(bookingsUrl, {
+                    credentials: 'include',
                     headers: {
-                        'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     }
                 })
@@ -431,8 +430,8 @@ function BookingSystem() {
         try {
             const response = await fetch(`${API_BASE_URL}/bookings/${id}`, {
                 method: 'DELETE',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })

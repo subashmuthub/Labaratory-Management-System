@@ -116,9 +116,8 @@ export const registerWithOTP = async (userData, otp) => {
 
         const data = await response.json()
         
-        if (data.success && data.data?.token) {
-            // Store authentication data
-            localStorage.setItem('token', data.data.token)
+        if (data.success && data.data?.user) {
+            // Store user data (session cookie is set by backend)
             localStorage.setItem('user', JSON.stringify(data.data.user))
         }
         
@@ -149,9 +148,8 @@ export const loginWithPassword = async (email, password) => {
 
         const data = await response.json()
         
-        if (data.success && data.data?.token) {
-            // Store authentication data
-            localStorage.setItem('token', data.data.token)
+        if (data.success && data.data?.user) {
+            // Store user data (session cookie is set by backend)
             localStorage.setItem('user', JSON.stringify(data.data.user))
         }
         
@@ -182,9 +180,8 @@ export const loginWithOTP = async (email, otp) => {
 
         const data = await response.json()
         
-        if (data.success && data.data?.token) {
-            // Store authentication data
-            localStorage.setItem('token', data.data.token)
+        if (data.success && data.data?.user) {
+            // Store user data (session cookie is set by backend)
             localStorage.setItem('user', JSON.stringify(data.data.user))
         }
         
@@ -315,9 +312,8 @@ export const handleOAuthCallback = async (code, state) => {
 
         const data = await response.json()
         
-        if (data.success && data.data?.token) {
-            // Store authentication data
-            localStorage.setItem('token', data.data.token)
+        if (data.success && data.data?.user) {
+            // Store user data (session cookie is set by backend)
             localStorage.setItem('user', JSON.stringify(data.data.user))
         }
         

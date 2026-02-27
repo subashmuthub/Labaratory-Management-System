@@ -41,12 +41,11 @@ function AddLabModal({ isOpen, onClose, onLabAdded }) {
         }
 
         try {
-            const token = localStorage.getItem('token')
             const response = await fetch(`${API_BASE_URL}/labs`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(formData)
             })
@@ -294,12 +293,11 @@ function EditLabModal({ isOpen, onClose, lab, onLabUpdated }) {
         setError('')
 
         try {
-            const token = localStorage.getItem('token')
             const response = await fetch(`${API_BASE_URL}/labs/${lab.id}`, {
                 method: 'PUT',
+                credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(formData)
             })
@@ -631,7 +629,7 @@ export default function LabManagement() {
     const [showNotifications, setShowNotifications] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
 
-    const { user, token, logout, loading: authLoading } = useAuth()
+    const { user, isAuthenticated, logout, loading: authLoading } = useAuth()
     const navigate = useNavigate()
     const location = useLocation()
 
@@ -785,8 +783,8 @@ export default function LabManagement() {
     const fetchLabs = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/labs`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -813,8 +811,8 @@ export default function LabManagement() {
         try {
             const response = await fetch(`${API_BASE_URL}/labs/${labId}`, {
                 method: 'DELETE',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -894,13 +892,13 @@ export default function LabManagement() {
         document.title = 'Lab Management | NEC LabMS'
         
         const loadData = async () => {
-            if (!token) return // Don't fetch if no token
+            if (!isAuthenticated) return // Don't fetch if not authenticated
             setLoading(true)
             await fetchLabs()
             setLoading(false)
         }
         loadData()
-    }, [token]) // Add token as dependency
+    }, [isAuthenticated]) // Add isAuthenticated as dependency
 
     // Show loading while auth is initializing
     if (authLoading) {

@@ -34,7 +34,7 @@ export default function Training() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
     const [currentTime, setCurrentTime] = useState(new Date())
 
-    const { user, token, logout } = useAuth()
+    const { user, isAuthenticated, logout } = useAuth()
     const navigate = useNavigate()
     const location = useLocation()
     const userMenuRef = useRef(null)
@@ -260,12 +260,12 @@ export default function Training() {
         // Set document title
         document.title = 'Training | NEC LabMS'
         
-        if (!token) {
+        if (!isAuthenticated) {
             navigate('/login')
             return
         }
         fetchData()
-    }, [token, navigate])
+    }, [isAuthenticated, navigate])
 
     const handleNavigation = (path) => {
         try {
@@ -324,8 +324,8 @@ export default function Training() {
     const fetchTrainings = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/training`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -341,8 +341,8 @@ export default function Training() {
     const fetchUserCertifications = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/training/certifications/user/${user.id}`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -358,8 +358,8 @@ export default function Training() {
     const fetchEquipment = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/equipment?limit=1000`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -375,8 +375,8 @@ export default function Training() {
     const fetchUsers = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/users`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -421,7 +421,7 @@ export default function Training() {
                 formData,
                 user: user,
                 userRole: user?.role,
-                token: token ? 'Present' : 'Missing'
+                isAuthenticated: isAuthenticated ? 'Yes' : 'No'
             });
 
             // Clean form data before sending
@@ -443,8 +443,8 @@ export default function Training() {
 
             const response = await fetch(url, {
                 method,
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(cleanFormData)
@@ -494,8 +494,8 @@ export default function Training() {
         try {
             const response = await fetch(`${API_BASE_URL}/training/${trainingId}/enroll`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -518,8 +518,8 @@ export default function Training() {
         try {
             const response = await fetch(`${API_BASE_URL}/training/certifications/${certificationId}/complete`, {
                 method: 'PATCH',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -542,8 +542,8 @@ export default function Training() {
         try {
             const response = await fetch(`${API_BASE_URL}/training/${id}`, {
                 method: 'DELETE',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })

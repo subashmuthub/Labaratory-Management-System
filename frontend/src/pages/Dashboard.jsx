@@ -3,6 +3,16 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
+// Fetch with timeout utility
+const fetchWithTimeout = (url, options = {}, timeout = 5000) => {
+    return Promise.race([
+        fetch(url, options),
+        new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Request timeout')), timeout)
+        )
+    ])
+}
+
 export default function Dashboard() {
     const [stats, setStats] = useState({
         totalLabs: 0,
@@ -48,7 +58,7 @@ export default function Dashboard() {
     const [allActivities, setAllActivities] = useState([])
     const [loadingActivities, setLoadingActivities] = useState(false)
 
-    const { user, token, logout } = useAuth()
+    const { user, logout, isAuthenticated, loading: authLoading } = useAuth()
     const navigate = useNavigate()
     const location = useLocation()
     const userMenuRef = useRef(null)
@@ -247,18 +257,28 @@ export default function Dashboard() {
         // Set document title
         document.title = 'Dashboard | NEC LabMS'
         
-        if (!token) {
+        console.log('📊 Dashboard useEffect triggered', { authLoading, isAuthenticated })
+        
+        if (authLoading) {
+            console.log('⏳ Waiting for auth to complete...')
+            return // Wait for auth to complete
+        }
+        
+        if (!isAuthenticated) {
+            console.log('🚫 User not authenticated, redirecting to login')
             navigate('/login')
             return
         }
+        
+        console.log('✅ User authenticated, loading dashboard data')
         loadDashboardData()
-    }, [token, navigate])
+    }, [isAuthenticated, authLoading, navigate])
 
     const fetchNotificationCount = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/notifications?unread_only=true`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -277,8 +297,8 @@ export default function Dashboard() {
     const fetchRecentNotifications = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/notifications?limit=3`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -304,19 +324,18 @@ export default function Dashboard() {
     const fetchStats = async () => {
         try {
             const headers = {
-                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             }
 
             const responses = await Promise.allSettled([
-                fetch(`${API_BASE_URL}/labs/stats`, { headers }),
-                fetch(`${API_BASE_URL}/equipment/stats`, { headers }),
-                fetch(`${API_BASE_URL}/bookings/stats`, { headers }),
-                fetch(`${API_BASE_URL}/orders/stats`, { headers }),
-                fetch(`${API_BASE_URL}/users/stats`, { headers }),
-                fetch(`${API_BASE_URL}/incidents/stats`, { headers }),
-                fetch(`${API_BASE_URL}/training/stats`, { headers }),
-                fetch(`${API_BASE_URL}/maintenance/stats`, { headers })
+                fetch(`${API_BASE_URL}/labs/stats`, { credentials: 'include', headers }),
+                fetch(`${API_BASE_URL}/equipment/stats`, { credentials: 'include', headers }),
+                fetch(`${API_BASE_URL}/bookings/stats`, { credentials: 'include', headers }),
+                fetch(`${API_BASE_URL}/orders/stats`, { credentials: 'include', headers }),
+                fetch(`${API_BASE_URL}/users/stats`, { credentials: 'include', headers }),
+                fetch(`${API_BASE_URL}/incidents/stats`, { credentials: 'include', headers }),
+                fetch(`${API_BASE_URL}/training/stats`, { credentials: 'include', headers }),
+                fetch(`${API_BASE_URL}/maintenance/stats`, { credentials: 'include', headers })
             ])
 
             const newStats = { ...stats }
@@ -398,8 +417,8 @@ export default function Dashboard() {
         try {
             console.log('📊 Fetching recent activities...')
             const response = await fetch(`${API_BASE_URL}/activities/recent?limit=10`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -435,8 +454,8 @@ export default function Dashboard() {
         setLoadingActivities(true)
         try {
             const response = await fetch(`${API_BASE_URL}/activities/recent?limit=100`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -471,8 +490,8 @@ export default function Dashboard() {
         try {
             console.log('📅 Fetching upcoming bookings...')
             const response = await fetch(`${API_BASE_URL}/bookings/upcoming?limit=5`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -508,8 +527,8 @@ export default function Dashboard() {
     const fetchSystemAlerts = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/system/alerts?limit=5`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -528,8 +547,8 @@ export default function Dashboard() {
     const fetchRecentLabs = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/labs?limit=5&sort=created_at&order=desc`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -550,8 +569,8 @@ export default function Dashboard() {
 
         try {
             const response = await fetch(`${API_BASE_URL}/orders?limit=5&sort=created_at&order=desc`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -578,8 +597,8 @@ export default function Dashboard() {
     const fetchEquipmentStatus = async () => {
         try {
             const response = await fetch(`${API_BASE_URL}/equipment/status-summary`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -606,13 +625,12 @@ export default function Dashboard() {
     const checkSystemStatus = async () => {
         try {
             const headers = {
-                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             }
 
             const responses = await Promise.allSettled([
-                fetch(`${API_BASE_URL}/system/health`, { headers }),
-                fetch(`${API_BASE_URL}/system/metrics`, { headers })
+                fetch(`${API_BASE_URL}/system/health`, { credentials: 'include', headers }),
+                fetch(`${API_BASE_URL}/system/metrics`, { credentials: 'include', headers })
             ])
 
             const newStatus = { ...systemStatus }
@@ -652,24 +670,35 @@ export default function Dashboard() {
     }
 
     const loadDashboardData = async () => {
+        console.log('🔄 Loading dashboard data...')
         setLoading(true)
         setError('')
 
         try {
-            await Promise.all([
-                fetchStats(),
-                fetchRecentActivities(),
-                fetchUpcomingBookings(),
-                fetchSystemAlerts(),
-                fetchRecentLabs(),
-                fetchRecentOrders(),
-                fetchEquipmentStatus(),
-                checkSystemStatus(),
-                fetchNotificationCount()
+            // Use allSettled instead of all to continue even if some requests fail
+            // Add timeout to prevent infinite loading
+            const timeout = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Dashboard load timeout')), 15000) // Increased timeout
+            )
+
+            await Promise.race([
+                Promise.allSettled([
+                    fetchStats(),
+                    fetchRecentActivities(),
+                    fetchUpcomingBookings(),
+                    fetchSystemAlerts(),
+                    fetchRecentLabs(),
+                    fetchRecentOrders(),
+                    fetchEquipmentStatus(),
+                    checkSystemStatus(),
+                    fetchNotificationCount()
+                ]),
+                timeout
             ])
+            console.log('✅ Dashboard data loaded successfully')
         } catch (error) {
-            console.error('Error loading dashboard data:', error)
-            setError('Failed to load dashboard data')
+            console.error('❌ Error loading dashboard data:', error)
+            setError('Some dashboard data failed to load')
         } finally {
             setLoading(false)
         }

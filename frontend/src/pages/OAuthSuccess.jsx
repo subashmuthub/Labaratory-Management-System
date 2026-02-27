@@ -1,13 +1,11 @@
-// src/pages/OAuthSuccess.jsx - OAuth Success Handler
+// src/pages/OAuthSuccess.jsx - OAuth Success Handler (Session-based)
 import { useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
 
 function OAuthSuccess() {
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
     const location = useLocation()
-    const { handleOAuthSuccess } = useAuth()
     const hasProcessed = useRef(false)
 
     useEffect(() => {
@@ -30,10 +28,8 @@ function OAuthSuccess() {
             console.log('📄 Current URL:', window.location.href);
             console.log('🔍 Search params:', Object.fromEntries(searchParams));
             
-            const token = searchParams.get('token')
             const error = searchParams.get('error')
 
-            console.log('🔑 Token parameter:', token ? token.substring(0, 20) + '...' : 'null');
             console.log('❌ Error parameter:', error);
 
             if (error) {
@@ -42,58 +38,55 @@ function OAuthSuccess() {
                 return
             }
 
-            if (token) {
-                try {
-                    console.log('🔍 Decoding OAuth token');
-                    
-                    // Decode token to get user data (simple decode, not verification)
-                    const base64Url = token.split('.')[1]
-                    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-                    const jsonPayload = decodeURIComponent(
-                        atob(base64)
-                            .split('')
-                            .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-                            .join('')
-                    )
-                    const decodedToken = JSON.parse(jsonPayload)
-                    
-                    // Create user object with proper structure
-                    const userData = {
-                        id: decodedToken.userId,
-                        email: decodedToken.email,
-                        name: decodedToken.name,
-                        role: decodedToken.role,
-                        isEmailVerified: true // OAuth users are verified
+            try {
+                console.log('🔍 Verifying session authentication');
+                
+                // Session cookie should already be set by backend
+                // Just verify authentication and get user data
+                const response = await fetch('/api/auth/verify', {
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
                     }
+                });
+
+                if (!response.ok) {
+                    console.error('❌ Session verification failed');
+                    navigate('/login?error=session_invalid')
+                    return
+                }
+
+                const data = await response.json();
+
+                if (data.success && data.user) {
+                    console.log('✅ OAuth authentication verified');
+                    console.log('👤 User data:', data.user);
                     
-                    console.log('👤 Extracted OAuth user data:', userData);
-                    
-                    // Use the dedicated OAuth success handler
-                    handleOAuthSuccess(token, userData)
+                    // Store user data in localStorage for quick access
+                    localStorage.setItem('user', JSON.stringify(data.user));
                     
                     console.log('🎯 OAuth processing complete - redirecting to dashboard');
                     
                     // Clean redirect to dashboard and remove search params from history
                     window.history.replaceState({}, '', '/dashboard')
                     navigate('/dashboard', { replace: true })
-                    
-                } catch (error) {
-                    console.error('❌ Token processing error:', error)
-                    navigate('/login?error=token_invalid')
+                } else {
+                    console.error('❌ No user data in verification response');
+                    navigate('/login?error=verification_failed')
                 }
-            } else {
-                console.warn('⚠️ No token found in URL parameters');
-                navigate('/login?error=no_token')
+            } catch (error) {
+                console.error('❌ OAuth processing error:', error)
+                navigate('/login?error=authentication_failed')
             }
         }
 
         processOAuthCallback()
-    }, [searchParams, navigate, handleOAuthSuccess])
+    }, [searchParams, navigate, location.pathname, refreshAuth])
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
             <div className="text-center">
-                <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <div className="w-16 h-16 border--600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                 <h2 className="text-xl font-semibold text-gray-900">Processing OAuth login...</h2>
                 <p className="text-gray-600 mt-2">Please wait while we complete your authentication.</p>
             </div>

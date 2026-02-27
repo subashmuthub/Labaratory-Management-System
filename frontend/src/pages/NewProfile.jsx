@@ -23,7 +23,7 @@ export default function NewProfile() {
     const [avatarPreview, setAvatarPreview] = useState(null)
     const [isDragging, setIsDragging] = useState(false)
 
-    const { user, token, updateUser } = useAuth()
+    const { user, isAuthenticated, updateUser } = useAuth()
     const navigate = useNavigate()
     const fileInputRef = useRef(null)
     const debounceTimeoutRef = useRef(null)
@@ -56,12 +56,12 @@ export default function NewProfile() {
     }, [])
 
     useEffect(() => {
-        if (!token) {
+        if (!isAuthenticated) {
             navigate('/login')
             return
         }
         fetchProfileData()
-    }, [token, navigate, fetchProfileData])
+    }, [isAuthenticated, navigate, fetchProfileData])
 
     // Cleanup function
     useEffect(() => {
