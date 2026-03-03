@@ -13,7 +13,7 @@ const generateSessionId = () => {
 const createSession = (user) => {
     const sessionId = generateSessionId();
     const sessionData = {
-        userId: user.id,
+        userId: user.userId || user.id, // Support both userId and id
         email: user.email,
         role: user.role,
         createdAt: new Date(),
@@ -72,5 +72,7 @@ module.exports = {
     getSession,
     deleteSession,
     cleanExpiredSessions,
-    getActiveSessionsCount
+    getActiveSessionsCount,
+    sessionStore, // Export for testing purposes
+    generateSessionId // Export for testing
 };

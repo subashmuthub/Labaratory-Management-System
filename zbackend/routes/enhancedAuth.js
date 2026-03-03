@@ -5,6 +5,7 @@ const nodemailer = require('nodemailer');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const { createSession, getSession, deleteSession } = require('../utils/sessionManager');
+const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -901,17 +902,39 @@ router.get('/oauth/google/callback', async (req, res) => {
             // Create session for OAuth user
             const sessionId = createSession(result.data.user);
             
+            console.log('🍪 Setting session cookie:', { 
+                sessionId: sessionId.substring(0, 10) + '...', 
+                userId: result.data.user.id,
+                email: result.data.user.email
+            });
+            
             // Set HTTP-only cookie with session ID
+            // Use domain: undefined to allow cross-port cookies on localhost
             res.cookie('sessionId', sessionId, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
+                secure: false, // false for localhost development
                 sameSite: 'lax',
+                path: '/',
+                domain: undefined, // Don't set domain to allow cross-port on localhost
                 maxAge: 24 * 60 * 60 * 1000 // 24 hours
             });
-            // Redirect to frontend
+            
+            console.log('🔄 Session cookie set, redirecting to frontend');
+            
+            // Redirect to frontend with user data in URL (temporary, will be removed by frontend)
             const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-            const redirectUrl = `${clientUrl}/oauth/success`;
-            console.log('✅ OAuth successful, redirecting to frontend');
+            const userData = encodeURIComponent(JSON.stringify({
+                id: result.data.user.id,
+                name: result.data.user.name,
+                email: result.data.user.email,
+                role: result.data.user.role,
+                avatar_url: result.data.user.avatar_url,
+                department: result.data.user.department,
+                phone: result.data.user.phone,
+                position: result.data.user.position
+            }));
+            const redirectUrl = `${clientUrl}/oauth/success?user=${userData}`;
+            console.log('✅ OAuth successful, redirecting to:', redirectUrl.substring(0, 100) + '...');
             res.redirect(redirectUrl);
         } else {
             console.error('❌ OAuth processing failed:', result.message);
@@ -944,15 +967,34 @@ router.get('/oauth/github/callback', async (req, res) => {
             // Create session for OAuth user  
             const sessionId = createSession(result.data.user);
             
+            console.log('🍪 Setting session cookie for GitHub user:', { 
+                sessionId: sessionId.substring(0, 10) + '...', 
+                userId: result.data.user.id,
+                email: result.data.user.email
+            });
+            
             // Set HTTP-only cookie with session ID
             res.cookie('sessionId', sessionId, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
+                secure: false, // Set to false for localhost development
                 sameSite: 'lax',
+                path: '/',
                 maxAge: 24 * 60 * 60 * 1000 // 24 hours
             });
-            // Redirect to frontend
-            const redirectUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/oauth/success`;
+            
+            // Redirect to frontend with user data in URL
+            const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+            const userData = encodeURIComponent(JSON.stringify({
+                id: result.data.user.id,
+                name: result.data.user.name,
+                email: result.data.user.email,
+                role: result.data.user.role,
+                avatar_url: result.data.user.avatar_url,
+                department: result.data.user.department,
+                phone: result.data.user.phone,
+                position: result.data.user.position
+            }));
+            const redirectUrl = `${clientUrl}/oauth/success?user=${userData}`;
             res.redirect(redirectUrl);
         } else {
             res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/login?error=${encodeURIComponent(result.message)}`);
@@ -1027,6 +1069,10 @@ router.post('/login', loginEmailValidation, async (req, res) => {
             name: user.name,
             email: user.email,
             role: user.role,
+            avatar_url: user.avatar_url,
+            department: user.department,
+            phone: user.phone,
+            position: user.position,
             is_active: user.is_active,
             is_email_verified: user.is_email_verified || false
         };
@@ -1094,6 +1140,10 @@ router.get('/verify', async (req, res) => {
                     name: user.name,
                     email: user.email,
                     role: user.role,
+                    avatar_url: user.avatar_url,
+                    department: user.department,
+                    phone: user.phone,
+                    position: user.position,
                     is_active: user.is_active,
                     is_email_verified: user.is_email_verified || false
                 }
@@ -1105,6 +1155,81 @@ router.get('/verify', async (req, res) => {
         res.status(401).json({
             success: false,
             message: 'Session verification failed'
+        });
+    }
+});
+
+// @route   POST /api/auth/oauth/establish-session
+// @desc    Establish session for OAuth authenticated user (called from frontend after OAuth redirect)
+router.post('/oauth/establish-session', async (req, res) => {
+    try {
+        const { userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'User ID is required'
+            });
+        }
+
+        console.log('🔐 Establishing session for OAuth user:', userId);
+        
+        // Find user
+        const user = await User.findByPk(userId);
+        
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        if (!user.is_active) {
+            return res.status(401).json({
+                success: false,
+                message: 'Account is inactive'
+            });
+        }
+
+        // Create new session
+        const sessionId = createSession(user);
+        
+        // Set session cookie
+        res.cookie('sessionId', sessionId, {
+            httpOnly: true,
+            secure: false,
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        });
+
+        console.log('✅ Session established for user:', user.email);
+
+        // Return user data
+        res.json({
+            success: true,
+            message: 'Session established successfully',
+            data: {
+                user: {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role,
+                    avatar_url: user.avatar_url,
+                    department: user.department,
+                    phone: user.phone,
+                    position: user.position,
+                    is_active: user.is_active,
+                    is_email_verified: user.is_email_verified || false
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('💥 Error establishing session:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to establish session'
         });
     }
 });
@@ -1189,29 +1314,8 @@ router.post('/logout', (req, res) => {
     });
 });
 
-// Middleware to authenticate token
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-        return res.status(401).json({
-            success: false,
-            message: 'Access token required'
-        });
-    }
-
-    jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) {
-            return res.status(403).json({
-                success: false,
-                message: 'Invalid or expired token'
-            });
-        }
-        req.user = user;
-        next();
-    });
-};
+// NOTE: authenticateToken middleware is now imported from '../middleware/auth'
+// using session-based authentication instead of JWT
 
 // @route   GET /api/auth/profile
 // @desc    Get current user profile

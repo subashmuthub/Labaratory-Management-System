@@ -29,8 +29,10 @@ function OAuthSuccess() {
             console.log('🔍 Search params:', Object.fromEntries(searchParams));
             
             const error = searchParams.get('error')
+            const userDataParam = searchParams.get('user')
 
             console.log('❌ Error parameter:', error);
+            console.log('👤 User data parameter:', userDataParam ? 'present' : 'missing');
 
             if (error) {
                 console.error('OAuth error:', error)
@@ -38,11 +40,51 @@ function OAuthSuccess() {
                 return
             }
 
+            // If we have user data in URL, establish a session through the proxy
+            if (userDataParam) {
+                try {
+                    const userData = JSON.parse(decodeURIComponent(userDataParam));
+                    console.log('👤 User data from OAuth:', userData);
+                    
+                    // Call endpoint to establish session (through Vite proxy)
+                    console.log('🔐 Establishing session through proxy...');
+                    const response = await fetch('/api/auth/oauth/establish-session', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ userId: userData.id })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success && data.data?.user) {
+                            console.log('✅ Session established successfully');
+                            console.log('👤 User data:', data.data.user);
+                            
+                            // Store user data in localStorage
+                            localStorage.setItem('user', JSON.stringify(data.data.user));
+                            
+                            console.log('🎯 OAuth processing complete - redirecting to dashboard');
+                            
+                            // Clean redirect to dashboard
+                            window.history.replaceState({}, '', '/dashboard')
+                            navigate('/dashboard', { replace: true })
+                            return
+                        }
+                    }
+                    
+                    console.error('❌ Failed to establish session');
+                } catch (parseError) {
+                    console.error('Failed to process OAuth callback:', parseError);
+                }
+            }
+
+            // Fallback: Try to verify existing session
             try {
-                console.log('🔍 Verifying session authentication');
+                console.log('🔍 Verifying existing session');
                 
-                // Session cookie should already be set by backend
-                // Just verify authentication and get user data
                 const response = await fetch('/api/auth/verify', {
                     credentials: 'include',
                     headers: {
@@ -50,38 +92,34 @@ function OAuthSuccess() {
                     }
                 });
 
-                if (!response.ok) {
-                    console.error('❌ Session verification failed');
-                    navigate('/login?error=session_invalid')
-                    return
-                }
-
-                const data = await response.json();
-
-                if (data.success && data.user) {
-                    console.log('✅ OAuth authentication verified');
-                    console.log('👤 User data:', data.user);
-                    
-                    // Store user data in localStorage for quick access
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    
-                    console.log('🎯 OAuth processing complete - redirecting to dashboard');
-                    
-                    // Clean redirect to dashboard and remove search params from history
-                    window.history.replaceState({}, '', '/dashboard')
-                    navigate('/dashboard', { replace: true })
-                } else {
-                    console.error('❌ No user data in verification response');
-                    navigate('/login?error=verification_failed')
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.data?.user) {
+                        console.log('✅ Session verified');
+                        console.log('👤 User data:', data.data.user);
+                        
+                        // Store user data in localStorage
+                        localStorage.setItem('user', JSON.stringify(data.data.user));
+                        
+                        console.log('🎯 Redirecting to dashboard');
+                        
+                        // Clean redirect to dashboard
+                        window.history.replaceState({}, '', '/dashboard')
+                        navigate('/dashboard', { replace: true })
+                        return
+                    }
                 }
             } catch (error) {
-                console.error('❌ OAuth processing error:', error)
-                navigate('/login?error=authentication_failed')
+                console.error('Session verification error:', error);
             }
+
+            // If all methods failed, redirect to login
+            console.error('❌ OAuth processing failed');
+            navigate('/login?error=oauth_failed')
         }
 
         processOAuthCallback()
-    }, [searchParams, navigate, location.pathname, refreshAuth])
+    }, [searchParams, navigate, location.pathname])
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">

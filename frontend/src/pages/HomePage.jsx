@@ -458,127 +458,126 @@ const HomePage = () => {
                     <div className="bg-white rounded-xl shadow-lg p-8">
                         {/* First Row */}
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8 items-center">
-                            <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                Zoho
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-red-500">
+                                <div className="text-2xl font-bold text-red-600">Zoho</div>
                             </div>
-                            <div className="bg-gradient-to-r from-blue-700 to-blue-900 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                TATA
-                                <div className="text-xs">CONSULTANCY SERVICES</div>
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-blue-500">
+                                <div className="text-2xl font-bold" style={{color: '#0066B2'}}>TCS</div>
+                                <div className="text-xs text-gray-500 mt-1">Tata Consultancy Services</div>
                             </div>
-                            <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                Cognizant
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-blue-500">
+                                <div className="text-2xl font-bold" style={{color: '#0046AD'}}>Cognizant</div>
                             </div>
-                            <div className="bg-gradient-to-r from-purple-500 to-blue-600 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                wipro
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-orange-500">
+                                <div className="text-2xl font-bold" style={{color: '#7B3F00'}}>Wipro</div>
                             </div>
-                            <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                Infosys
-                                <div className="text-xs">LIMITED BY EXCELLENCE POWERED BY VALUES</div>
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-blue-500">
+                                <div className="text-2xl font-bold" style={{color: '#007CC3'}}>Infosys</div>
                             </div>
                         </div>
 
                         {/* Second Row */}
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8 items-center">
-                            <div className="bg-gradient-to-r from-purple-600 to-purple-800 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                accenture
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-purple-500">
+                                <div className="text-2xl font-bold" style={{color: '#A100FF'}}>Accenture</div>
                             </div>
-                            <div className="bg-gradient-to-r from-blue-800 to-blue-900 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                IBM
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-blue-500">
+                                <div className="text-2xl font-bold" style={{color: '#1F70C1'}}>IBM</div>
                             </div>
-                            <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                Infoview
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-orange-500">
+                                <div className="text-2xl font-bold text-orange-600">Infoview</div>
                             </div>
-                            <div className="bg-gradient-to-r from-blue-500 to-green-500 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                solartis
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-teal-500">
+                                <div className="text-2xl font-bold text-teal-600">Solartis</div>
                             </div>
-                            <div className="bg-gradient-to-r from-blue-700 to-blue-900 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                HCL
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-blue-500">
+                                <div className="text-2xl font-bold" style={{color: '#0000CD'}}>HCL</div>
                             </div>
                         </div>
 
                         {/* Third Row */}
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8 items-center">
-                            <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                HEXAWARE
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-red-500">
+                                <div className="text-2xl font-bold text-red-600">Hexaware</div>
                             </div>
-                            <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                Atos Syntel
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-blue-500">
+                                <div className="text-2xl font-bold" style={{color: '#0066B2'}}>Atos</div>
                             </div>
-                            <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                Tech Mahindra
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-red-500">
+                                <div className="text-2xl font-bold" style={{color: '#ED1B2E'}}>Tech Mahindra</div>
                             </div>
-                            <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                TESSOLVE
-                                <div className="text-xs">Design Engineering Services</div>
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-emerald-500">
+                                <div className="text-2xl font-bold text-emerald-600">Tessolve</div>
                             </div>
-                            <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                AstraZeneca
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-purple-500">
+                                <div className="text-2xl font-bold" style={{color: '#7C2C91'}}>AstraZeneca</div>
                             </div>
                         </div>
 
                         {/* Fourth Row */}
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8 items-center">
-                            <div className="bg-gradient-to-r from-blue-800 to-blue-900 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                MBit
-                                <div className="text-xs">WIRELESS</div>
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-blue-500">
+                                <div className="text-2xl font-bold text-blue-700">MBit</div>
+                                <div className="text-xs text-gray-500 mt-1">WIRELESS</div>
                             </div>
-                            <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                Brahms India Private Limited
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-indigo-500">
+                                <div className="text-xl font-bold text-indigo-700">Brahms India</div>
+                                <div className="text-xs text-gray-500 mt-1">Private Limited</div>
                             </div>
-                            <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                cadence
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-red-500">
+                                <div className="text-2xl font-bold" style={{color: '#C6262C'}}>Cadence</div>
                             </div>
-                            <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                H&R
-                                <div className="text-xs">BLOCK ADVANTAGE</div>
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-green-500">
+                                <div className="text-2xl font-bold" style={{color: '#73B13E'}}>H&R Block</div>
                             </div>
-                            <div className="bg-gradient-to-r from-green-500 to-green-700 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                e-con Systems
-                                <div className="text-xs">Real Product Development Partners</div>
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-emerald-500">
+                                <div className="text-xl font-bold text-emerald-600">e-con Systems</div>
+                                <div className="text-xs text-gray-500 mt-1">Camera Solutions</div>
                             </div>
                         </div>
 
                         {/* Fifth Row */}
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8 items-center">
-                            <div className="bg-gradient-to-r from-green-500 to-green-700 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                SmartDV
-                                <div className="text-xs">Technologies</div>
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-green-500">
+                                <div className="text-2xl font-bold text-green-600">SmartDV</div>
+                                <div className="text-xs text-gray-500 mt-1">Technologies</div>
                             </div>
-                            <div className="bg-gradient-to-r from-blue-500 to-blue-700 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                Lucid
-                                <div className="text-xs">Imaging</div>
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-blue-500">
+                                <div className="text-2xl font-bold text-blue-600">Lucid</div>
+                                <div className="text-xs text-gray-500 mt-1">Imaging</div>
                             </div>
-                            <div className="bg-gradient-to-r from-blue-400 to-blue-600 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                Apptivo
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-sky-500">
+                                <div className="text-2xl font-bold text-sky-600">Apptivo</div>
                             </div>
-                            <div className="bg-gradient-to-r from-red-500 to-red-700 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                Jilaba
-                                <div className="text-xs">Software Limited</div>
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-red-500">
+                                <div className="text-2xl font-bold text-red-600">Jilaba</div>
+                                <div className="text-xs text-gray-500 mt-1">Software Limited</div>
                             </div>
-                            <div className="bg-gradient-to-r from-gray-700 to-gray-900 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                JMAN Group
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-gray-500">
+                                <div className="text-2xl font-bold text-gray-700">JMAN Group</div>
                             </div>
                         </div>
 
                         {/* Sixth Row */}
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 items-center">
-                            <div className="bg-gradient-to-r from-red-500 to-red-700 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                DOYENSYS
-                                <div className="text-xs">Technology Solutions Pvt. Ltd.</div>
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-red-500">
+                                <div className="text-xl font-bold text-red-600">DOYENSYS</div>
+                                <div className="text-xs text-gray-500 mt-1">Technology Solutions</div>
                             </div>
-                            <div className="bg-gradient-to-r from-red-600 to-red-800 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                BROADCOM
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-red-500">
+                                <div className="text-2xl font-bold" style={{color: '#CC092F'}}>Broadcom</div>
                             </div>
-                            <div className="bg-gradient-to-r from-blue-500 to-blue-700 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                VVDN
-                                <div className="text-xs">TECHNOLOGIES</div>
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-blue-500">
+                                <div className="text-2xl font-bold text-blue-600">VVDN</div>
+                                <div className="text-xs text-gray-500 mt-1">Technologies</div>
                             </div>
-                            <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                Caliber Interconnect Solutions
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-blue-500">
+                                <div className="text-xl font-bold text-blue-700">Caliber</div>
+                                <div className="text-xs text-gray-500 mt-1">Interconnect Solutions</div>
                             </div>
-                            <div className="bg-gradient-to-r from-red-600 to-red-800 text-white p-4 rounded-lg text-center font-bold text-lg hover:shadow-lg transition-shadow">
-                                FSS
-                                <div className="text-xs">POWERING PAYMENTS</div>
+                            <div className="bg-white border-2 border-gray-200 p-6 rounded-lg text-center hover:shadow-xl transition-all hover:border-red-500">
+                                <div className="text-2xl font-bold text-red-600">FSS</div>
+                                <div className="text-xs text-gray-500 mt-1">Powering Payments</div>
                             </div>
                         </div>
                     </div>

@@ -186,6 +186,34 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
+// POST enroll user in training
+router.post('/:id/enroll', async (req, res) => {
+    try {
+        const trainingId = req.params.id;
+        const userId = req.user.userId;
+        
+        const certification = await trainingService.enrollUserInTraining(trainingId, userId);
+        res.status(201).json({
+            success: true,
+            message: 'Successfully enrolled in training',
+            data: certification
+        });
+    } catch (error) {
+        console.error('Error enrolling in training:', error);
+        if (error.message === 'User is already enrolled in this training' || error.message === 'Training not found') {
+            return res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
+        res.status(500).json({
+            success: false,
+            message: 'Failed to enroll in training',
+            error: error.message
+        });
+    }
+});
+
 // ===== CERTIFICATION ENDPOINTS =====
 
 // GET all certifications
@@ -226,6 +254,53 @@ router.get('/certifications/expiring', async (req, res) => {
     }
 });
 
+// GET user certifications
+router.get('/certifications/user/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const certifications = await trainingService.getUserCertifications(userId);
+        res.json({
+            success: true,
+            data: certifications
+        });
+    } catch (error) {
+        console.error('Error fetching user certifications:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch user certifications',
+            error: error.message
+        });
+    }
+});
+
+// PATCH complete certification
+router.patch('/certifications/:id/complete', async (req, res) => {
+    try {
+        const certificationId = req.params.id;
+        const userId = req.user.userId;
+        
+        const certification = await trainingService.completeCertification(certificationId, userId);
+        res.json({
+            success: true,
+            message: 'Certification marked as complete',
+            data: certification
+        });
+    } catch (error) {
+        console.error('Error completing certification:', error);
+        if (error.message === 'Certification not found or access denied') {
+            return res.status(404).json({
+                success: false,
+                message: error.message
+            });
+        }
+        res.status(500).json({
+            success: false,
+            message: 'Failed to complete certification',
+            error: error.message
+        });
+    }
+});
+
 // POST create certification
 router.post('/certifications', async (req, res) => {
     try {
@@ -240,6 +315,34 @@ router.post('/certifications', async (req, res) => {
         res.status(500).json({
             success: false,
             message: error.message || 'Failed to create certification',
+            error: error.message
+        });
+    }
+});
+
+// PATCH complete certification
+router.patch('/certifications/:id/complete', async (req, res) => {
+    try {
+        const certificationId = req.params.id;
+        const userId = req.user.userId;
+        
+        const certification = await trainingService.completeCertification(certificationId, userId);
+        res.json({
+            success: true,
+            message: 'Certification marked as complete',
+            data: certification
+        });
+    } catch (error) {
+        console.error('Error completing certification:', error);
+        if (error.message === 'Certification not found or access denied') {
+            return res.status(404).json({
+                success: false,
+                message: error.message
+            });
+        }
+        res.status(500).json({
+            success: false,
+            message: 'Failed to complete certification',
             error: error.message
         });
     }

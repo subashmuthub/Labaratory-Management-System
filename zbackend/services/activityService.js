@@ -6,7 +6,7 @@ class ActivityService {
     /**
      * Get recent activities
      */
-    async getRecentActivities(limit = 10, days = 7) {
+    async getRecentActivities(limit = 10, days = 30) {
         const daysAgo = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
         const activities = [];
 

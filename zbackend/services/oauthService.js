@@ -183,6 +183,7 @@ class OAuthService {
                     email: email,
                     password: null, // OAuth users don't have passwords
                     role: 'student', // Default role (must match enum in User model)
+                    is_active: true, // OAuth users are active by default
                     is_email_verified: true,
                     last_login: new Date(),
                 };

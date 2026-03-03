@@ -10,7 +10,7 @@ router.get('/recent', authenticateToken, async (req, res) => {
         console.log('📋 Fetching recent activities');
         
         const limit = parseInt(req.query.limit) || 10;
-        const days = parseInt(req.query.days) || 7;
+        const days = parseInt(req.query.days) || 30; // Changed from 7 to 30
         
         const activities = await activityService.getRecentActivities(limit, days);
         

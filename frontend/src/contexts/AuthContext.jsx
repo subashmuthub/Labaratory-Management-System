@@ -13,7 +13,24 @@ export const AuthProvider = ({ children }) => {
         
         const initializeAuth = async () => {
             try {
-                // Try to verify cookie with server
+                // First check if user data exists in localStorage (from OAuth)
+                const storedUser = localStorage.getItem('user');
+                if (storedUser) {
+                    try {
+                        const userData = JSON.parse(storedUser);
+                        if (userData && userData.id && userData.email) {
+                            console.log('✅ AuthContext: Found user in localStorage (OAuth):', userData.email);
+                            setUser(userData);
+                            setLoading(false);
+                            return; // Skip session verification if we have valid user data
+                        }
+                    } catch (parseError) {
+                        console.error('Failed to parse stored user data:', parseError);
+                        localStorage.removeItem('user');
+                    }
+                }
+
+                // If no localStorage data, try to verify cookie with server
                 const response = await fetch(`${apiConfig.baseURL}/api/auth/verify`, {
                     credentials: 'include' // Include cookies
                 });

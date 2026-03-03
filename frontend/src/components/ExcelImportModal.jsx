@@ -382,11 +382,11 @@ const ExcelImportModal = ({ isOpen, onClose, onImportComplete, labs }) => {
             console.log('Sending equipment data:', {
                 count: equipmentData.length,
                 sample: equipmentData[0],
-                url: `${apiConfig.baseURL}/equipment/bulk-import`
+                url: `${apiConfig.baseURL}/api/equipment/bulk-import`
             })
 
             // Call bulk import endpoint
-            const response = await fetch(`${apiConfig.baseURL}/equipment/bulk-import`, {
+            const response = await fetch(`${apiConfig.baseURL}/api/equipment/bulk-import`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {

@@ -340,7 +340,93 @@ class TrainingService {
     }
 
     /**
-     * Helper: Clean training data
+     * Enroll user in training (creates certification record)
+     */
+    async enrollUserInTraining(trainingId, userId) {
+        // Check if user is already enrolled
+        const existingCertification = await TrainingCertification.findOne({
+            where: { 
+                training_id: trainingId, 
+                user_id: userId 
+            }
+        });
+
+        if (existingCertification) {
+            throw new Error('User is already enrolled in this training');
+        }
+
+        // Get training details to calculate expiry date
+        const training = await Training.findByPk(trainingId);
+        if (!training) {
+            throw new Error('Training not found');
+        }
+
+        // Calculate expiry date
+        const certificationDate = new Date();
+        const expiryDate = new Date();
+        expiryDate.setMonth(expiryDate.getMonth() + training.validity_months);
+
+        // Create certification record
+        const certification = await TrainingCertification.create({
+            training_id: trainingId,
+            user_id: userId,
+            certification_date: certificationDate,
+            expiry_date: expiryDate,
+            status: 'active'
+        });
+
+        return certification;
+    }
+
+    /**
+     * Mark certification as complete
+     */
+    async completeCertification(certificationId, userId) {
+        const certification = await TrainingCertification.findOne({
+            where: { 
+                id: certificationId,
+                user_id: userId 
+            }
+        });
+
+        if (!certification) {
+            throw new Error('Certification not found or access denied');
+        }
+
+        // Update certification status
+        await certification.update({
+            status: 'active',
+            updated_at: new Date()
+        });
+
+        return certification;
+    }
+
+    /**     * Get certifications for a specific user  
+     */
+    async getUserCertifications(userId) {
+        const certifications = await TrainingCertification.findAll({
+            where: { user_id: userId },
+            include: [
+                {
+                    model: Training,
+                    as: 'training',
+                    attributes: ['id', 'title', 'description', 'duration_hours', 'validity_months']
+                },
+                {
+                    model: User,
+                    as: 'user',
+                    attributes: ['id', 'name', 'email']
+                }
+            ],
+            order: [['created_at', 'DESC']],
+            attributes: ['id', 'training_id', 'user_id', 'certification_date', 'expiry_date', 'score', 'status', 'created_at', 'updated_at']
+        });
+
+        return certifications;
+    }
+
+    /**     * Helper: Clean training data
      */
     cleanTrainingData(data) {
         const cleanedData = { ...data };
