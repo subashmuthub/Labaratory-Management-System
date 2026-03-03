@@ -174,6 +174,47 @@ router.post('/', validateIncident, async (req, res) => {
     }
 });
 
+// PATCH update incident status
+router.patch('/:id/status', async (req, res) => {
+    try {
+        const { status } = req.body;
+        
+        if (!status) {
+            return res.status(400).json({
+                success: false,
+                message: 'Status is required'
+            });
+        }
+
+        if (!['open', 'in_progress', 'resolved', 'closed'].includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid status value'
+            });
+        }
+
+        const incident = await incidentService.updateStatus(req.params.id, status, req.user.userId);
+        res.json({
+            success: true,
+            message: 'Status updated successfully',
+            data: incident
+        });
+    } catch (error) {
+        console.error('Error updating incident status:', error);
+        if (error.message === 'Incident not found') {
+            return res.status(404).json({
+                success: false,
+                message: error.message
+            });
+        }
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update status',
+            error: error.message
+        });
+    }
+});
+
 // PUT update incident
 router.put('/:id', validateIncident, async (req, res) => {
     try {

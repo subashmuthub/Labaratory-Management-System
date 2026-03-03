@@ -260,6 +260,52 @@ class IncidentService {
     }
 
     /**
+     * Update incident status
+     */
+    async updateStatus(id, status, userId) {
+        const incident = await Incident.findByPk(id);
+
+        if (!incident) {
+            throw new Error('Incident not found');
+        }
+
+        const oldStatus = incident.status;
+        const updateData = { status };
+
+        // Auto-update resolution date if status changed to resolved
+        if (status === 'resolved' && incident.status !== 'resolved') {
+            updateData.resolved_at = new Date();
+            updateData.resolved_by = userId;
+        }
+
+        await incident.update(updateData);
+
+        // Create notification for status change
+        if (status !== oldStatus) {
+            try {
+                const notifyUser = incident.reported_by || incident.assigned_to;
+                if (notifyUser) {
+                    await createNotification({
+                        user_id: notifyUser,
+                        type: 'incident',
+                        title: 'Incident Status Updated',
+                        message: `Incident "${incident.title}" status changed to ${status}.`,
+                        metadata: {
+                            incident_id: incident.id,
+                            old_status: oldStatus,
+                            new_status: status
+                        }
+                    });
+                }
+            } catch (notifError) {
+                console.error('⚠️ Failed to create status notification:', notifError.message);
+            }
+        }
+
+        return incident;
+    }
+
+    /**
      * Delete incident
      */
     async deleteIncident(id) {
