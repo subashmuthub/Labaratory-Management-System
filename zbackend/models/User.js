@@ -3,10 +3,16 @@ const bcrypt = require('bcryptjs');
 const { sequelize } = require('../config/database');
 
 const User = sequelize.define('User', {
-    id: {
+    // ── New RBAC PK (friend-compatible schema) ─────────────────────────────
+    userId: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true
+    },
+    // ── Kept for backward compatibility ───────────────────────────────────
+    id: {
+        type: DataTypes.INTEGER,
+        allowNull: true
     },
     name: {
         type: DataTypes.STRING(100),
@@ -108,10 +114,6 @@ const User = sequelize.define('User', {
         type: DataTypes.DATE,
         allowNull: true
     },
-    userId: {
-        type: DataTypes.INTEGER,
-        allowNull: true
-    },
     companyId: {
         type: DataTypes.INTEGER,
         allowNull: true,
@@ -151,6 +153,20 @@ const User = sequelize.define('User', {
         type: DataTypes.ENUM('local', 'google'),
         allowNull: true,
         defaultValue: 'local'
+    },
+    // ── camelCase aliases for friend-compatible schema ─────────────────────
+    googleId: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+        unique: true
+    },
+    resetPasswordToken: {
+        type: DataTypes.STRING(500),
+        allowNull: true
+    },
+    resetPasswordExpires: {
+        type: DataTypes.DATE,
+        allowNull: true
     },
     resetOTP: {
         type: DataTypes.STRING(255),
@@ -206,7 +222,7 @@ User.hashPassword = async function (plainPassword) {
 // Instance methods
 User.prototype.comparePassword = async function (candidatePassword) {
     try {
-        const userWithPassword = await User.unscoped().findByPk(this.id);
+        const userWithPassword = await User.unscoped().findByPk(this.userId || this.id);
         return candidatePassword === userWithPassword.password;
     } catch (error) {
         console.error('Password comparison error:', error);
@@ -286,9 +302,11 @@ User.prototype.generatePasswordResetToken = async function () {
 
     this.reset_password_token = resetToken;
     this.reset_password_expires = expiresAt;
+    this.resetPasswordToken = resetToken;
+    this.resetPasswordExpires = expiresAt;
 
     await this.save({ 
-        fields: ['reset_password_token', 'reset_password_expires'] 
+        fields: ['reset_password_token', 'reset_password_expires', 'resetPasswordToken', 'resetPasswordExpires'] 
     });
 
     return resetToken;
@@ -313,9 +331,11 @@ User.prototype.verifyPasswordResetToken = function (token) {
 User.prototype.clearPasswordResetToken = async function () {
     this.reset_password_token = null;
     this.reset_password_expires = null;
+    this.resetPasswordToken = null;
+    this.resetPasswordExpires = null;
 
     await this.save({ 
-        fields: ['reset_password_token', 'reset_password_expires'] 
+        fields: ['reset_password_token', 'reset_password_expires', 'resetPasswordToken', 'resetPasswordExpires'] 
     });
 };
 
@@ -324,7 +344,10 @@ User.findByEmailWithPassword = async function (email) {
     try {
         return await User.scope('withPassword').findOne({
             where: {
-                email: email.toLowerCase()
+                [Op.or]: [
+                    { email: email.toLowerCase() },
+                    { userMail: email.toLowerCase() }
+                ]
             }
         });
     } catch (error) {
