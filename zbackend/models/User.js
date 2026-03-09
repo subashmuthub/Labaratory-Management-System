@@ -107,6 +107,66 @@ const User = sequelize.define('User', {
     reset_password_expires: {
         type: DataTypes.DATE,
         allowNull: true
+    },
+    userId: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    companyId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: 0
+    },
+    departmentId: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    userNumber: {
+        type: DataTypes.STRING(50),
+        allowNull: true
+    },
+    userName: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    userMail: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    roleId: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    status: {
+        type: DataTypes.ENUM('Active', 'Inactive'),
+        allowNull: true,
+        defaultValue: 'Active'
+    },
+    profileImage: {
+        type: DataTypes.STRING(500),
+        allowNull: true,
+        defaultValue: '/uploads/default.jpg'
+    },
+    authProvider: {
+        type: DataTypes.ENUM('local', 'google'),
+        allowNull: true,
+        defaultValue: 'local'
+    },
+    resetOTP: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    resetOTPExpires: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    createdBy: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    updatedBy: {
+        type: DataTypes.INTEGER,
+        allowNull: true
     }
 }, {
     tableName: 'users',

@@ -35,13 +35,8 @@ const authenticateToken = async (req, res, next) => {
         console.log('✅ Session verified for user:', session.email);
 
         // Get user from database to ensure they still exist and are active
-        // ONLY use existing database columns (before migration)
-        const user = await User.findByPk(session.userId, {
-            attributes: [
-                'id', 'name', 'email', 'role', 'is_active', 
-                'department', 'phone', 'position', 'student_id', 
-                'avatar_url', 'is_email_verified'
-            ]
+        const user = await User.unscoped().findByPk(session.userId, {
+            attributes: { exclude: ['password', 'otp_code', 'otp_expires_at', 'reset_password_token'] }
         });
 
         if (!user) {
@@ -52,8 +47,9 @@ const authenticateToken = async (req, res, next) => {
             });
         }
 
-        // Check if user is active
-        if (!user.is_active) {
+        // Check if user is active (supports both old and new fields)
+        const isActive = user.is_active === true || user.is_active === 1 || user.status === 'Active';
+        if (!isActive) {
             console.log('❌ User account is inactive:', user.email);
             return res.status(401).json({
                 success: false,
@@ -61,10 +57,10 @@ const authenticateToken = async (req, res, next) => {
             });
         }
 
-        // Set user object for routes with existing database fields only
+        // Set user object — both old fields (backward compat) and new RBAC fields
         req.user = {
+            // Old fields
             id: user.id,
-            userId: user.id, // Alias for compatibility
             email: user.email,
             role: user.role,
             name: user.name,
@@ -74,7 +70,18 @@ const authenticateToken = async (req, res, next) => {
             position: user.position,
             student_id: user.student_id,
             avatar_url: user.avatar_url,
-            is_email_verified: user.is_email_verified
+            is_email_verified: user.is_email_verified,
+            // New RBAC fields
+            userId: user.userId || user.id,
+            userName: user.userName || user.name,
+            userMail: user.userMail || user.email,
+            roleId: user.roleId,
+            departmentId: user.departmentId,
+            companyId: user.companyId,
+            userNumber: user.userNumber,
+            status: user.status,
+            profileImage: user.profileImage || user.avatar_url,
+            authProvider: user.authProvider
         };
 
         console.log('✅ Authentication successful for:', req.user.email);

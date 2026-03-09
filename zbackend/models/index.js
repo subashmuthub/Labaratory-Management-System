@@ -17,15 +17,10 @@ const Training = require('./Training');
 const TrainingCertification = require('./TrainingCertification');
 const RecentlyAccessed = require('./RecentlyAccessed');
 
-// Note: Role and Department models are prepared for future RBAC migration
-// but are NOT loaded until the database migration is executed
-// const Role = require('./Role');
-// const Department = require('./Department');
+const Role = require('./Role');
+const Department = require('./Department');
 
-// ============= ASSOCIATIONS USING CURRENT DATABASE SCHEMA =============
-// The current database uses:
-// - Users table with columns: id, name, email, role (ENUM), department (STRING)
-// - NO roleId or departmentId foreign keys yet
+// ============= ASSOCIATIONS =============
 
 // ============= USER ASSOCIATIONS =============
 
@@ -307,6 +302,12 @@ Report.belongsTo(ReportSchedule, {
     as: 'schedule'
 });
 
+// ============= RBAC ASSOCIATIONS =============
+User.belongsTo(Role,       { foreignKey: 'roleId',       as: 'role_info',       constraints: false });
+Role.hasMany(User,         { foreignKey: 'roleId',       as: 'users',           constraints: false });
+User.belongsTo(Department, { foreignKey: 'departmentId', as: 'department_info', constraints: false });
+Department.hasMany(User,   { foreignKey: 'departmentId', as: 'dept_users',      constraints: false });
+
 console.log('✅ Model associations defined successfully');
 
 // ============= EXPORT ALL MODELS =============
@@ -326,8 +327,6 @@ module.exports = {
     Training,
     TrainingCertification,
     RecentlyAccessed,
-    // Role and Department models are prepared but not exported
-    // until the RBAC migration is executed
-    // Role,
-    // Department,
+    Role,
+    Department,
 };

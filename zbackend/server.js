@@ -75,8 +75,8 @@ const routes = [
     { name: 'OTP', path: '/api/otp', file: './routes/otp' },
     { name: 'Recent', path: '/api/recent', file: './routes/recentlyAccessed', isModule: true },
     { name: 'Users', path: '/api/users', file: './routes/users' },
-    // { name: 'Roles', path: '/api/roles', file: './routes/roles' }, // RBAC - disabled until migration runs
-    // { name: 'Departments', path: '/api/departments', file: './routes/departments' }, // RBAC - disabled until migration runs
+    { name: 'Roles', path: '/api/roles', file: './routes/roles' },
+    { name: 'Departments', path: '/api/departments', file: './routes/departments' },
     { name: 'Equipment', path: '/api/equipment', file: './routes/equipment' },
     { name: 'Labs', path: '/api/labs', file: './routes/labs' },
     { name: 'Bookings', path: '/api/bookings', file: './routes/bookings' },
@@ -166,8 +166,8 @@ app.get('/', (req, res) => {
             testAssociations: '/api/test/associations', // ✅ NEW
             auth: '/api/auth',
             users: '/api/users',
-            // roles: '/api/roles', // RBAC - disabled until migration runs
-            // departments: '/api/departments', // RBAC - disabled until migration runs
+            roles: '/api/roles',
+            departments: '/api/departments',
             labs: '/api/labs',
             equipment: '/api/equipment',
             bookings: '/api/bookings',
