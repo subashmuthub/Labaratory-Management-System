@@ -6,6 +6,7 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [skipVerify, setSkipVerify] = useState(false);
 
     // Initialize auth state from server (check cookie)
     useEffect(() => {
@@ -18,18 +19,31 @@ export const AuthProvider = ({ children }) => {
                         const parsedUser = JSON.parse(storedUser);
                         // Optimistically set user from localStorage
                         setUser(parsedUser);
+                        console.log('📦 Loaded user from localStorage:', parsedUser.email);
                     } catch (e) {
                         localStorage.removeItem('user');
                     }
                 }
 
-                // Small delay to ensure cookie is set by browser after OAuth redirect
-                await new Promise(resolve => setTimeout(resolve, 100));
+                // If skipVerify flag is set (after fresh registration/login), trust localStorage
+                if (skipVerify && storedUser) {
+                    console.log('⏭️ Skipping verification - user just logged in/registered');
+                    setSkipVerify(false);
+                    setLoading(false);
+                    return;
+                }
+
+                // Longer delay to ensure cookie is set by browser after registration/OAuth redirect
+                await new Promise(resolve => setTimeout(resolve, 300));
 
                 // Verify session with server - only log if authenticated
+                console.log('🔍 Verifying session with server...');
                 const response = await fetch(`${apiConfig.baseURL}/api/auth/verify`, {
                     credentials: 'include' // Include cookies
-                }).catch(() => null); // Suppress network errors
+                }).catch((err) => {
+                    console.log('⚠️ Verify request failed:', err.message);
+                    return null;
+                });
 
                 if (response && response.ok) {
                     const data = await response.json();
@@ -38,25 +52,41 @@ export const AuthProvider = ({ children }) => {
                         localStorage.setItem('user', JSON.stringify(data.data.user));
                         console.log('✅ Session verified:', data.data.user.email);
                     } else {
+                        // Only clear if we don't have a stored user from recent action
+                        if (!storedUser) {
+                            setUser(null);
+                            localStorage.removeItem('user');
+                        } else {
+                            console.log('⚠️ Verify returned no user, but keeping localStorage user');
+                        }
+                    }
+                } else {
+                    // If verify failed but we have a stored user, keep it for a moment
+                    // This handles the case where registration just completed
+                    if (storedUser) {
+                        console.log('⚠️ Verify failed, but keeping recently stored user');
+                        // User was already set from localStorage, keep it
+                    } else {
+                        // Not authenticated - this is normal on login page
                         setUser(null);
                         localStorage.removeItem('user');
                     }
-                } else {
-                    // Not authenticated - this is normal on login page
+                }
+            } catch (error) {
+                console.log('⚠️ Auth initialization error:', error.message);
+                // Only clear if we don't have stored user
+                const storedUser = localStorage.getItem('user');
+                if (!storedUser) {
                     setUser(null);
                     localStorage.removeItem('user');
                 }
-            } catch (error) {
-                // Silent fail - expected when not logged in
-                setUser(null);
-                localStorage.removeItem('user');
             } finally {
                 setLoading(false);
             }
         };
         
         initializeAuth();
-    }, []);
+    }, [skipVerify]);
 
     const login = async (email, password) => {
         try {
@@ -79,6 +109,8 @@ export const AuthProvider = ({ children }) => {
                 setUser(data.data.user);
                 // Store user data (not token) in localStorage
                 localStorage.setItem('user', JSON.stringify(data.data.user));
+                // Skip verification on next mount since we just logged in
+                setSkipVerify(true);
 
                 console.log('Login successful, user:', data.data.user);
                 return { success: true, user: data.data.user };
@@ -266,6 +298,8 @@ export const AuthProvider = ({ children }) => {
                 setUser(data.data.user);
                 // Store user data (not token) in localStorage
                 localStorage.setItem('user', JSON.stringify(data.data.user));
+                // Skip verification on next mount since we just registered
+                setSkipVerify(true);
 
                 console.log('🎉 Registration completed successfully:', data.data.user);
                 return { success: true, user: data.data.user };
@@ -300,6 +334,8 @@ export const AuthProvider = ({ children }) => {
                     // Complete registration - update state
                     setUser(data.data.user);
                     localStorage.setItem('user', JSON.stringify(data.data.user));
+                    // Skip verification on next mount since we just registered
+                    setSkipVerify(true);
 
                     console.log('Registration successful, user:', data.data.user);
                     return { success: true, user: data.data.user };
@@ -364,7 +400,7 @@ export const AuthProvider = ({ children }) => {
         resetPasswordWithOTP,
         logout,
         loading,
-        isAuthenticated: !loading && !!user && user.id,
+        isAuthenticated: !loading && !!user && ((user.id !== null && user.id !== undefined) || (user.userId !== null && user.userId !== undefined)),
         updateUser
     };
 

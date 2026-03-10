@@ -257,7 +257,13 @@ export default function Dashboard() {
         // Set document title
         document.title = 'Dashboard | NEC LabMS'
         
-        console.log('📊 Dashboard useEffect triggered', { authLoading, isAuthenticated })
+        console.log('📊 Dashboard useEffect triggered', { 
+            authLoading, 
+            isAuthenticated, 
+            hasUser: !!user,
+            userId: user?.id,
+            userEmail: user?.email
+        })
         
         if (authLoading) {
             console.log('⏳ Waiting for auth to complete...')
@@ -265,7 +271,11 @@ export default function Dashboard() {
         }
         
         if (!isAuthenticated) {
-            console.log('🚫 User not authenticated, redirecting to login')
+            console.log('🚫 User not authenticated, redirecting to login', {
+                user: user,
+                userExists: !!user,
+                userId: user?.id
+            })
             navigate('/login')
             return
         }

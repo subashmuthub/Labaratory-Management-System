@@ -37,14 +37,24 @@ export default function NewProfile() {
             const profileResponse = await usersAPI.getProfile()
             console.log('Profile response:', profileResponse)
             
+            // Null-safe helper: replace null/undefined with empty string for input fields
+            const sanitize = (data) => ({
+                ...data,
+                name: data.name ?? '',
+                email: data.email ?? '',
+                phone: data.phone ?? '',
+                department: data.department ?? '',
+                position: data.position ?? '',
+                bio: data.bio ?? '',
+            })
             if (profileResponse.success && profileResponse.data) {
-                setProfile(prev => ({ ...prev, ...profileResponse.data }))
+                setProfile(prev => ({ ...prev, ...sanitize(profileResponse.data) }))
                 setAvatarPreview(profileResponse.data.avatar_url)
             } else if (profileResponse.success === false) {
                 setError(profileResponse.message || 'Failed to load profile data')
             } else {
                 // Handle case where response doesn't have success field but has data
-                setProfile(prev => ({ ...prev, ...profileResponse }))
+                setProfile(prev => ({ ...prev, ...sanitize(profileResponse) }))
                 setAvatarPreview(profileResponse.avatar_url)
             }
         } catch (error) {

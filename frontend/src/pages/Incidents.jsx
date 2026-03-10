@@ -974,18 +974,23 @@ export default function Incidents() {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <select
-                                                        value={incident?.status || 'open'}
-                                                        onChange={(e) => updateStatus(incident?.id, e.target.value)}
-                                                        className={`text-xs font-semibold rounded-full px-2 py-1 border-0 ${getStatusColor(incident?.status)}`}
-                                                        disabled={!['admin', 'lab_assistant', 'teacher'].includes(user?.role)}
-                                                    >
-                                                        {statuses.map(status => (
-                                                            <option key={status} value={status}>
-                                                                {status.replace('_', ' ')}
-                                                            </option>
-                                                        ))}
-                                                    </select>
+                                                    {['admin', 'lab_assistant', 'lab_technician', 'teacher', 'faculty'].includes(user?.role) ? (
+                                                        <select
+                                                            value={incident?.status || 'open'}
+                                                            onChange={(e) => updateStatus(incident?.id, e.target.value)}
+                                                            className={`text-xs font-semibold rounded-full px-2 py-1 border-0 cursor-pointer ${getStatusColor(incident?.status)}`}
+                                                        >
+                                                            {statuses.map(status => (
+                                                                <option key={status} value={status}>
+                                                                    {status.replace('_', ' ')}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    ) : (
+                                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(incident?.status)}`}>
+                                                            {(incident?.status || 'open').replace('_', ' ')}
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                     {/* ✅ FIXED: Use incidentAssignee from backend associations */}

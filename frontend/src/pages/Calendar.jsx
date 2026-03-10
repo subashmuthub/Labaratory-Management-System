@@ -871,7 +871,8 @@ export default function Calendar() {
                                     })}
                                 </div>
 
-                                {/* New Booking Button */}
+                                {/* New Booking Button - hidden for students */}
+                                {user?.role !== 'student' && (
                                 <button
                                     onClick={() => handleNavigation('/bookings')}
                                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
@@ -881,6 +882,7 @@ export default function Calendar() {
                                     </svg>
                                     <span>New Booking</span>
                                 </button>
+                                )}
 
                                 {/* Notifications */}
                                 <button
@@ -1087,16 +1089,9 @@ export default function Calendar() {
                                 
                                 {bookings.length > 0 && (
                                     <button
-                                        onClick={() => {
-                                            // Navigate to the first booking's month
-                                            const firstBooking = bookings[0]
-                                            if (firstBooking.start_time || firstBooking.date) {
-                                                const bookingDate = new Date(firstBooking.start_time || firstBooking.date)
-                                                setCurrentDate(bookingDate)
-                                            }
-                                        }}
+                                        onClick={() => handleNavigation('/bookings')}
                                         className="px-4 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
-                                        title="Navigate to month with bookings"
+                                        title="Go to Bookings page"
                                     >
                                         📅 Go to Bookings
                                     </button>

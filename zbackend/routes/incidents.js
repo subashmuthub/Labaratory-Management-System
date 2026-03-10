@@ -193,7 +193,9 @@ router.patch('/:id/status', async (req, res) => {
             });
         }
 
-        const incident = await incidentService.updateStatus(req.params.id, status, req.user.userId);
+        // Use req.user.id (old column) for FK reference on resolved_by; fall back to userId
+        const actorId = req.user.id || req.user.userId;
+        const incident = await incidentService.updateStatus(req.params.id, status, actorId);
         res.json({
             success: true,
             message: 'Status updated successfully',

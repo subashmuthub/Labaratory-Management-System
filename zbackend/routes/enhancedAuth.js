@@ -643,7 +643,8 @@ router.post('/register-with-otp', registerValidation, async (req, res) => {
         });
 
         const userData = {
-            id: newUser.id,
+            id: newUser.userId || newUser.id, // Use userId as primary key
+            userId: newUser.userId,
             name: newUser.name,
             email: newUser.email,
             role: newUser.role,
@@ -652,7 +653,7 @@ router.post('/register-with-otp', registerValidation, async (req, res) => {
             created_at: newUser.created_at
         };
 
-        console.log('✅ User registered successfully with OTP verification:', newUser.id);
+        console.log('✅ User registered successfully with OTP verification:', newUser.userId);
 
         // Clean up the verified OTP
         otpStore.delete(emailLower);
@@ -739,7 +740,8 @@ router.post('/login-with-otp', async (req, res) => {
         });
 
         const userData = {
-            id: user.id,
+            id: user.userId || user.id, // Use userId as primary key
+            userId: user.userId,
             name: user.name,
             email: user.email,
             role: user.role,
@@ -1062,7 +1064,8 @@ router.post('/login', loginEmailValidation, async (req, res) => {
         });
 
         const userData = {
-            id: user.id,
+            id: user.userId || user.id, // Use userId as primary key
+            userId: user.userId,
             name: user.name,
             email: user.email,
             role: user.role,
@@ -1133,7 +1136,8 @@ router.get('/verify', async (req, res) => {
             message: 'Session is valid',
             data: {
                 user: {
-                    id: user.id,
+                    id: user.userId || user.id, // Use userId as primary key
+                    userId: user.userId,
                     name: user.name,
                     email: user.email,
                     role: user.role,
@@ -1208,7 +1212,8 @@ router.post('/oauth/establish-session', async (req, res) => {
             message: 'Session established successfully',
             data: {
                 user: {
-                    id: user.id,
+                    id: user.userId || user.id, // Use userId as primary key
+                    userId: user.userId,
                     name: user.name,
                     email: user.email,
                     role: user.role,
@@ -1374,7 +1379,8 @@ router.put('/profile', authenticateToken, async (req, res) => {
         await user.update(updates);
 
         const updatedUser = {
-            id: user.id,
+            id: user.userId || user.id, // Use userId as primary key
+            userId: user.userId,
             name: user.name,
             email: user.email,
             role: user.role,

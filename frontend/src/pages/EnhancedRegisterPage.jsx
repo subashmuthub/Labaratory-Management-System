@@ -162,6 +162,10 @@ function EnhancedRegisterPage() {
             if (registrationResult.success) {
                 setShowOTPModal(false)
                 console.log('Registration completed successfully:', registrationResult.user)
+                
+                // Small delay to ensure session cookie is set and auth state is updated
+                await new Promise(resolve => setTimeout(resolve, 200))
+                
                 navigate('/dashboard', { replace: true })
             } else {
                 setShowOTPModal(false)
