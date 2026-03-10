@@ -160,9 +160,11 @@ class OAuthService {
                     updateFields.avatar_url = profile.avatar_url || profile.picture;
                 }
                 
-                // Set the correct OAuth ID field
+                // Set the correct OAuth ID field (both old and new schema columns)
                 if (provider === 'google') {
-                    updateFields.google_id = profile.id;
+                    updateFields.google_id = profile.id;  // old column
+                    updateFields.googleId = profile.id;   // new RBAC schema column
+                    updateFields.authProvider = 'google';
                 } else if (provider === 'github') {
                     updateFields.github_id = profile.id;
                 }
@@ -178,14 +180,20 @@ class OAuthService {
                 }
             } else {
                 // Create new user from OAuth profile
+                const displayName = profile.name || profile.login || 'OAuth User';
                 const createFields = {
-                    name: profile.name || profile.login || 'OAuth User',
+                    name: displayName,
                     email: email,
                     password: null, // OAuth users don't have passwords
                     role: 'student', // Default role (must match enum in User model)
                     is_active: true, // OAuth users are active by default
                     is_email_verified: true,
                     last_login: new Date(),
+                    // New RBAC schema fields
+                    userMail: email,
+                    userName: displayName,
+                    roleId: 1, // Student role
+                    status: 'Active',
                 };
                 
                 // Add avatar URL if available
@@ -193,9 +201,11 @@ class OAuthService {
                     createFields.avatar_url = profile.avatar_url || profile.picture;
                 }
                 
-                // Set the correct OAuth ID field
+                // Set the correct OAuth ID field (both old and new schema columns)
                 if (provider === 'google') {
-                    createFields.google_id = profile.id;
+                    createFields.google_id = profile.id;  // old column
+                    createFields.googleId = profile.id;   // new RBAC schema column
+                    createFields.authProvider = 'google';
                 } else if (provider === 'github') {
                     createFields.github_id = profile.id;
                 }

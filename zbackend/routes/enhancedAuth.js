@@ -611,14 +611,22 @@ router.post('/register-with-otp', registerValidation, async (req, res) => {
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 12);
 
-        // Create user
+        // Map old role enum to new roleId
+        const roleToRoleId = { student: 1, faculty: 2, teacher: 3, lab_assistant: 4, lab_technician: 5, admin: 6 };
+        const selectedRole = role || 'student';
+
+        // Create user - populate both old schema fields and new RBAC schema fields
         const newUser = await User.create({
             name: name.trim(),
             email: emailLower,
             password: hashedPassword,
-            role: role || 'student',
+            role: selectedRole,
             is_active: true,
-            is_email_verified: true // Email verified via OTP
+            is_email_verified: true, // Email verified via OTP
+            // New RBAC schema fields
+            userMail: emailLower,
+            userName: name.trim(),
+            roleId: roleToRoleId[selectedRole] || 1
         });
 
         // OTP already removed after verification above
