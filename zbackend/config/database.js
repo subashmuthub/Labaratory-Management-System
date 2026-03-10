@@ -42,7 +42,7 @@ const sequelize = new Sequelize({
     // Other options
     define: {
         timestamps: true,
-        underscored: true,
+        underscored: false,    // Keep false — old fields are already snake_case, new RBAC fields are camelCase
         freezeTableName: true
     }
 });

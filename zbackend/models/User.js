@@ -7,12 +7,14 @@ const User = sequelize.define('User', {
     userId: {
         type: DataTypes.INTEGER,
         primaryKey: true,
-        autoIncrement: true
+        autoIncrement: true,
+        field: 'userId'          // tell Sequelize: DB column is camelCase, NOT user_id
     },
     // ── Kept for backward compatibility ───────────────────────────────────
     id: {
         type: DataTypes.INTEGER,
-        allowNull: true
+        allowNull: true,
+        field: 'id'
     },
     name: {
         type: DataTypes.STRING(100),
@@ -117,72 +119,88 @@ const User = sequelize.define('User', {
     companyId: {
         type: DataTypes.INTEGER,
         allowNull: true,
-        defaultValue: 0
+        defaultValue: 0,
+        field: 'companyId'
     },
     departmentId: {
         type: DataTypes.INTEGER,
-        allowNull: true
+        allowNull: true,
+        field: 'departmentId'
     },
     userNumber: {
         type: DataTypes.STRING(50),
-        allowNull: true
+        allowNull: true,
+        field: 'userNumber'
     },
     userName: {
         type: DataTypes.STRING(255),
-        allowNull: true
+        allowNull: true,
+        field: 'userName'
     },
     userMail: {
         type: DataTypes.STRING(255),
-        allowNull: true
+        allowNull: true,
+        field: 'userMail'
     },
     roleId: {
         type: DataTypes.INTEGER,
-        allowNull: true
+        allowNull: true,
+        field: 'roleId'
     },
     status: {
         type: DataTypes.ENUM('Active', 'Inactive'),
         allowNull: true,
-        defaultValue: 'Active'
+        defaultValue: 'Active',
+        field: 'status'
     },
     profileImage: {
         type: DataTypes.STRING(500),
         allowNull: true,
-        defaultValue: '/uploads/default.jpg'
+        defaultValue: '/uploads/default.jpg',
+        field: 'profileImage'
     },
     authProvider: {
         type: DataTypes.ENUM('local', 'google'),
         allowNull: true,
-        defaultValue: 'local'
+        defaultValue: 'local',
+        field: 'authProvider'
     },
     // ── camelCase aliases for friend-compatible schema ─────────────────────
     googleId: {
         type: DataTypes.STRING(255),
         allowNull: true,
-        unique: true
+        unique: true,
+        field: 'googleId'
     },
     resetPasswordToken: {
         type: DataTypes.STRING(500),
-        allowNull: true
+        allowNull: true,
+        field: 'resetPasswordToken'
     },
     resetPasswordExpires: {
         type: DataTypes.DATE,
-        allowNull: true
+        allowNull: true,
+        field: 'resetPasswordExpires'
     },
     resetOTP: {
         type: DataTypes.STRING(255),
-        allowNull: true
+        allowNull: true,
+        field: 'resetOTP'
     },
     resetOTPExpires: {
         type: DataTypes.DATE,
-        allowNull: true
+        allowNull: true,
+        field: 'resetOTPExpires'
     },
     createdBy: {
         type: DataTypes.INTEGER,
-        allowNull: true
+        allowNull: true,
+        field: 'createdBy'
     },
     updatedBy: {
         type: DataTypes.INTEGER,
-        allowNull: true
+        allowNull: true,
+        field: 'updatedBy'
     }
 }, {
     tableName: 'users',
