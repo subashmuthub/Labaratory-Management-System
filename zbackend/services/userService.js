@@ -1,38 +1,44 @@
 // User Service - Business Logic Layer
-const { User, Booking, Incident, Maintenance, Order, Report } = require('../models');
+const { User, Role, Department, Booking, Incident, Maintenance, Order, Report } = require('../models');
 const bcrypt = require('bcryptjs');
 const { Op } = require('sequelize');
 
+const ROLE_MAP = { 1: 'student', 2: 'faculty', 3: 'teacher', 4: 'lab_assistant', 5: 'lab_technician', 6: 'admin' };
+const ROLE_TO_ID = { student: 1, faculty: 2, teacher: 3, lab_assistant: 4, lab_technician: 5, admin: 6 };
+
 class UserService {
-    /**
-     * Get all users
-     */
     async getAllUsers() {
         const users = await User.findAll({
-            attributes: ['id', 'name', 'email', 'role', 'student_id', 'department', 'phone', 'is_active', 'last_login', 'created_at'],
-            order: [['created_at', 'DESC']]
+            attributes: { exclude: ['password'] },
+            include: [
+                { model: Role, as: 'role', attributes: ['roleId', 'roleName'] },
+                { model: Department, as: 'department', attributes: ['departmentId', 'departmentName'] }
+            ],
+            order: [['createdAt', 'DESC']]
         });
 
-        // Transform is_active to status for frontend
-        return users.map(user => ({
-            ...user.dataValues,
-            status: user.is_active ? 'Active' : 'Inactive',
-            lastLogin: user.last_login
-        }));
+        return users.map(user => {
+            const u = user.toJSON();
+            return {
+                ...u,
+                id: u.userId,
+                name: u.userName,
+                email: u.userMail,
+                role: u.role ? u.role.roleName.toLowerCase() : (ROLE_MAP[u.roleId] || 'student'),
+                status: u.status,
+            };
+        });
     }
 
-    /**
-     * Get user statistics
-     */
     async getStats() {
         const [totalUsers, activeUsers, students, teachers, admins, labTechnicians, labAssistants] = await Promise.all([
             User.count(),
-            User.count({ where: { is_active: true } }),
-            User.count({ where: { role: 'student' } }),
-            User.count({ where: { role: 'teacher' } }),
-            User.count({ where: { role: 'admin' } }),
-            User.count({ where: { role: 'lab_technician' } }),
-            User.count({ where: { role: 'lab_assistant' } })
+            User.count({ where: { status: 'Active' } }),
+            User.count({ where: { roleId: 1 } }),
+            User.count({ where: { roleId: 3 } }),
+            User.count({ where: { roleId: 6 } }),
+            User.count({ where: { roleId: 5 } }),
+            User.count({ where: { roleId: 4 } })
         ]);
 
         return {
@@ -46,36 +52,28 @@ class UserService {
         };
     }
 
-    /**
-     * Create new user
-     */
     async createUser(userData) {
-        const { name, email, role, password, student_id, department, phone } = userData;
+        const { name, email, role, password, student_id } = userData;
 
-        // Validate required fields
         if (!name || !email || !role || !password) {
             throw new Error('Missing required fields: name, email, role, and password are required');
         }
 
-        // Check if user already exists
-        const existingUser = await User.findOne({ where: { email } });
+        const existingUser = await User.findOne({ where: { userMail: email } });
         if (existingUser) {
             throw new Error('User with this email already exists');
         }
 
-        // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
+        const userNumber = student_id || `USR${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
-        // Create user
         const user = await User.create({
-            name,
-            email,
-            role: role ? role.toLowerCase() : 'student',
+            userName: name,
+            userMail: email,
+            roleId: ROLE_TO_ID[role?.toLowerCase()] || 1,
             password: hashedPassword,
-            student_id: student_id || null,
-            department: department || null,
-            phone: phone || null,
-            is_active: true
+            userNumber,
+            status: 'Active'
         });
 
         // Return user without password
@@ -83,12 +81,13 @@ class UserService {
         return userWithoutPassword;
     }
 
-    /**
-     * Get user by ID
-     */
     async getUserById(id) {
         const user = await User.findByPk(id, {
-            attributes: { exclude: ['password'] }
+            attributes: { exclude: ['password'] },
+            include: [
+                { model: Role, as: 'role', attributes: ['roleId', 'roleName'] },
+                { model: Department, as: 'department', attributes: ['departmentId', 'departmentName'] }
+            ]
         });
 
         if (!user) {
@@ -98,96 +97,51 @@ class UserService {
         return user;
     }
 
-    /**
-     * Update user
-     */
     async updateUser(id, updateData) {
         console.log('✏️ UserService.updateUser - User ID:', id);
-        console.log('📝 Update data received:', { ...updateData, password: updateData.password ? '[REDACTED]' : undefined });
         
         const user = await User.findByPk(id);
 
         if (!user) {
-            console.error('❌ User not found with ID:', id);
             throw new Error('User not found');
         }
 
-        console.log('📝 Current user data:', user.name, user.email, user.role);
-
-        // If password is being updated, hash it
+        // Map old/new field names
+        const mappedData = {};
+        if (updateData.name !== undefined) mappedData.userName = updateData.name;
+        if (updateData.email !== undefined) mappedData.userMail = updateData.email;
+        if (updateData.userName !== undefined) mappedData.userName = updateData.userName;
+        if (updateData.userMail !== undefined) mappedData.userMail = updateData.userMail;
+        if (updateData.status !== undefined) mappedData.status = updateData.status;
+        if (updateData.roleId !== undefined) mappedData.roleId = updateData.roleId;
+        if (updateData.role !== undefined) mappedData.roleId = ROLE_TO_ID[updateData.role?.toLowerCase()] || mappedData.roleId;
+        if (updateData.departmentId !== undefined) mappedData.departmentId = updateData.departmentId;
         if (updateData.password) {
-            console.log('🔐 Hashing new password...');
-            updateData.password = await bcrypt.hash(updateData.password, 10);
+            mappedData.password = await bcrypt.hash(updateData.password, 10);
         }
 
-        console.log('💾 Updating user in database...');
-        await user.update(updateData);
-
-        console.log('✅ User updated successfully:', user.name, user.email);
+        await user.update(mappedData);
         
-        // Return user without password
         const { password: _, ...userWithoutPassword } = user.dataValues;
         return userWithoutPassword;
     }
 
-    /**
-     * Delete user permanently
-     */
     async deleteUser(id) {
-        console.log('🗑️ UserService.deleteUser - Looking for user ID:', id);
         const user = await User.findByPk(id);
 
         if (!user) {
-            console.error('❌ User not found with ID:', id);
             throw new Error('User not found');
         }
 
-        console.log('📝 Found user to delete:', user.name, user.email);
-        
-        // Check for related records that would prevent deletion
         try {
-            // Count related records
-            const [bookingsCount, incidentsCount, maintenanceCount, ordersCount, reportsCount] = await Promise.all([
-                Booking.count({ where: { user_id: id } }),
-                Incident.count({ where: { reported_by: id } }),
-                Maintenance.count({ where: { created_by: id } }),
-                Order.count({ where: { ordered_by: id } }),
-                Report.count({ where: { created_by: id } })
-            ]);
-
-            const totalRelated = bookingsCount + incidentsCount + maintenanceCount + ordersCount + reportsCount;
-            console.log('📊 Related records:', { bookingsCount, incidentsCount, maintenanceCount, ordersCount, reportsCount, totalRelated });
-
-            if (totalRelated > 0) {
-                const message = `Cannot delete user. User has ${totalRelated} related records (${bookingsCount} bookings, ${incidentsCount} incidents, ${maintenanceCount} maintenance, ${ordersCount} orders, ${reportsCount} reports). Please deactivate instead.`;
-                console.error('❌', message);
-                throw new Error(message);
-            }
-
-            console.log('✅ No related records found, proceeding with deletion');
-            console.log('🔥 Calling user.destroy() - PERMANENT DELETE');
-            
-            // Permanently delete the user from database
             await user.destroy();
-            
-            console.log('✅ User.destroy() completed - User removed from database');
-            return { message: 'User deleted permanently', deletedUser: { id: user.id, name: user.name, email: user.email } };
-            
+            return { message: 'User deleted permanently', deletedUser: { id: user.userId, name: user.userName, email: user.userMail } };
         } catch (error) {
-            // If it's our custom error message, rethrow it
-            if (error.message.includes('Cannot delete user')) {
-                throw error;
-            }
-            
-            // Otherwise, it's a database error
-            console.error('💥 Database error during deletion:', error);
+            console.error('💥 Error during user deletion:', error);
             throw new Error('Cannot delete user due to database constraints. User may have related records. Please deactivate the user instead.');
         }
     }
 
-    /**
-     * Activate user
-     */
     async activateUser(id) {
         const user = await User.findByPk(id);
 
@@ -195,26 +149,23 @@ class UserService {
             throw new Error('User not found');
         }
 
-        await user.update({ is_active: true });
+        await user.update({ status: 'Active' });
         
         const { password: _, ...userWithoutPassword } = user.dataValues;
         return userWithoutPassword;
     }
 
-    /**
-     * Search users
-     */
     async searchUsers(searchTerm) {
         const users = await User.findAll({
             where: {
                 [Op.or]: [
-                    { name: { [Op.like]: `%${searchTerm}%` } },
-                    { email: { [Op.like]: `%${searchTerm}%` } },
-                    { student_id: { [Op.like]: `%${searchTerm}%` } }
+                    { userName: { [Op.like]: `%${searchTerm}%` } },
+                    { userMail: { [Op.like]: `%${searchTerm}%` } },
+                    { userNumber: { [Op.like]: `%${searchTerm}%` } }
                 ]
             },
             attributes: { exclude: ['password'] },
-            order: [['created_at', 'DESC']]
+            order: [['createdAt', 'DESC']]
         });
 
         return users;

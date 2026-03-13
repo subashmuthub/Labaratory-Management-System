@@ -62,7 +62,7 @@ function AddLabModal({ isOpen, onClose, onLabAdded }) {
                     square_feet: '',
                     lab_seats: ''
                 })
-                onLabAdded(result.data.lab)
+                onLabAdded(result.data)
                 onClose()
             } else {
                 throw new Error(result.message || 'Failed to create lab')
@@ -305,7 +305,7 @@ function EditLabModal({ isOpen, onClose, lab, onLabUpdated }) {
             const result = await response.json()
 
             if (result.success) {
-                onLabUpdated(result.data.lab)
+                onLabUpdated(result.data)
                 onClose()
             } else {
                 throw new Error(result.message || 'Failed to update lab')

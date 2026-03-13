@@ -3,11 +3,14 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const { body, validationResult } = require('express-validator');
-const User = require('../models/User');
+const User = require('../models/User').default ?? require('../models/User');
 const { createSession, getSession, deleteSession } = require('../utils/sessionManager');
 const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
+
+// Role mapping for backward compatibility
+const ROLE_MAP = { 1: 'student', 2: 'faculty', 3: 'teacher', 4: 'lab_assistant', 5: 'lab_technician', 6: 'admin' };
 
 // Gmail OTP Storage (In production, use Redis or database)
 const otpStore = new Map();
@@ -455,7 +458,7 @@ router.post('/register', registerValidation, async (req, res) => {
 
         // Check if user already exists
         const existingUser = await User.findOne({
-            where: { email: emailLower }
+            where: { userMail: emailLower }
         });
 
         if (existingUser) {
@@ -598,7 +601,7 @@ router.post('/register-with-otp', registerValidation, async (req, res) => {
 
         // Check if user already exists
         const existingUser = await User.findOne({
-            where: { email: emailLower }
+            where: { userMail: emailLower }
         });
 
         if (existingUser) {
@@ -615,18 +618,17 @@ router.post('/register-with-otp', registerValidation, async (req, res) => {
         const roleToRoleId = { student: 1, faculty: 2, teacher: 3, lab_assistant: 4, lab_technician: 5, admin: 6 };
         const selectedRole = role || 'student';
 
-        // Create user - populate both old schema fields and new RBAC schema fields
+        // Generate unique userNumber (format: USR + timestamp + random)
+        const userNumber = `USR${Date.now()}${Math.floor(Math.random() * 1000)}`;
+
+        // Create user with new schema
         const newUser = await User.create({
-            name: name.trim(),
-            email: emailLower,
-            password: hashedPassword,
-            role: selectedRole,
-            is_active: true,
-            is_email_verified: true, // Email verified via OTP
-            // New RBAC schema fields
-            userMail: emailLower,
             userName: name.trim(),
-            roleId: roleToRoleId[selectedRole] || 1
+            userMail: emailLower,
+            password: hashedPassword,
+            roleId: roleToRoleId[selectedRole] || 1,
+            userNumber: userNumber,
+            status: 'Active'
         });
 
         // OTP already removed after verification above
@@ -643,14 +645,13 @@ router.post('/register-with-otp', registerValidation, async (req, res) => {
         });
 
         const userData = {
-            id: newUser.userId || newUser.id, // Use userId as primary key
+            id: newUser.userId,
             userId: newUser.userId,
-            name: newUser.name,
-            email: newUser.email,
-            role: newUser.role,
-            is_active: newUser.is_active,
-            is_email_verified: newUser.is_email_verified,
-            created_at: newUser.created_at
+            name: newUser.userName,
+            email: newUser.userMail,
+            role: ROLE_MAP[newUser.roleId],
+            status: newUser.status,
+            createdAt: newUser.createdAt
         };
 
         console.log('✅ User registered successfully with OTP verification:', newUser.userId);
@@ -668,9 +669,15 @@ router.post('/register-with-otp', registerValidation, async (req, res) => {
 
     } catch (error) {
         console.error('💥 Registration error:', error);
+        console.error('Error name:', error.name);
+        console.error('Error message:', error.message);
+        if (error.errors) {
+            console.error('Validation errors:', error.errors);
+        }
         res.status(500).json({
             success: false,
-            message: 'Registration failed'
+            message: 'Registration failed',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 });
@@ -708,7 +715,7 @@ router.post('/login-with-otp', async (req, res) => {
 
         // Find user
         const user = await User.findOne({
-            where: { email: emailLower }
+            where: { userMail: emailLower }
         });
 
         if (!user) {
@@ -718,7 +725,7 @@ router.post('/login-with-otp', async (req, res) => {
             });
         }
 
-        if (!user.is_active) {
+        if (user.status !== 'Active') {
             return res.status(400).json({
                 success: false,
                 message: 'Account is deactivated'
@@ -740,13 +747,12 @@ router.post('/login-with-otp', async (req, res) => {
         });
 
         const userData = {
-            id: user.userId || user.id, // Use userId as primary key
+            id: user.userId,
             userId: user.userId,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            is_active: user.is_active,
-            is_email_verified: user.is_email_verified
+            name: user.userName,
+            email: user.userMail,
+            role: ROLE_MAP[user.roleId],
+            status: user.status
         };
 
         console.log('✅ OTP login successful for:', email);
@@ -1013,7 +1019,9 @@ router.post('/login', loginEmailValidation, async (req, res) => {
         const emailLower = email.toLowerCase();
 
         // Find user with password included
-        const user = await User.findByEmailWithPassword(emailLower);
+        const user = await User.unscoped().findOne({
+            where: { userMail: emailLower }
+        });
 
         if (!user) {
             return res.status(400).json({
@@ -1042,7 +1050,7 @@ router.post('/login', loginEmailValidation, async (req, res) => {
         }
 
         // Check if account is active
-        if (!user.is_active) {
+        if (user.status !== 'Active') {
             return res.status(400).json({
                 success: false,
                 message: 'Account is deactivated'
@@ -1064,17 +1072,15 @@ router.post('/login', loginEmailValidation, async (req, res) => {
         });
 
         const userData = {
-            id: user.userId || user.id, // Use userId as primary key
+            id: user.userId,
             userId: user.userId,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            avatar_url: user.avatar_url,
-            department: user.department,
-            phone: user.phone,
-            position: user.position,
-            is_active: user.is_active,
-            is_email_verified: user.is_email_verified || false
+            name: user.userName,
+            email: user.userMail,
+            role: ROLE_MAP[user.roleId],
+            status: user.status,
+            profileImage: user.profileImage,
+            department: user.departmentId,
+            authProvider: user.authProvider
         };
 
         console.log('✅ Login successful for:', email);
@@ -1122,7 +1128,7 @@ router.get('/verify', async (req, res) => {
         // Check if user still exists
         const user = await User.findByPk(session.userId);
         
-        if (!user || !user.is_active) {
+        if (!user || user.status !== 'Active') {
             // Clean up invalid session
             deleteSession(sessionId);
             return res.status(401).json({
@@ -1136,17 +1142,14 @@ router.get('/verify', async (req, res) => {
             message: 'Session is valid',
             data: {
                 user: {
-                    id: user.userId || user.id, // Use userId as primary key
+                    id: user.userId,
                     userId: user.userId,
-                    name: user.name,
-                    email: user.email,
-                    role: user.role,
-                    avatar_url: user.avatar_url,
-                    department: user.department,
-                    phone: user.phone,
-                    position: user.position,
-                    is_active: user.is_active,
-                    is_email_verified: user.is_email_verified || false
+                    name: user.userName,
+                    email: user.userMail,
+                    role: ROLE_MAP[user.roleId],
+                    status: user.status,
+                    profileImage: user.profileImage,
+                    department: user.departmentId
                 }
             }
         });
@@ -1185,7 +1188,7 @@ router.post('/oauth/establish-session', async (req, res) => {
             });
         }
 
-        if (!user.is_active) {
+        if (user.status !== 'Active') {
             return res.status(401).json({
                 success: false,
                 message: 'Account is inactive'
@@ -1204,7 +1207,7 @@ router.post('/oauth/establish-session', async (req, res) => {
             maxAge: 24 * 60 * 60 * 1000 // 24 hours
         });
 
-        console.log('✅ Session established for user:', user.email);
+        console.log('✅ Session established for user:', user.userMail);
 
         // Return user data
         res.json({
@@ -1212,17 +1215,14 @@ router.post('/oauth/establish-session', async (req, res) => {
             message: 'Session established successfully',
             data: {
                 user: {
-                    id: user.userId || user.id, // Use userId as primary key
+                    id: user.userId,
                     userId: user.userId,
-                    name: user.name,
-                    email: user.email,
-                    role: user.role,
-                    avatar_url: user.avatar_url,
-                    department: user.department,
-                    phone: user.phone,
-                    position: user.position,
-                    is_active: user.is_active,
-                    is_email_verified: user.is_email_verified || false
+                    name: user.userName,
+                    email: user.userMail,
+                    role: ROLE_MAP[user.roleId],
+                    status: user.status,
+                    profileImage: user.profileImage,
+                    department: user.departmentId
                 }
             }
         });
@@ -1252,7 +1252,7 @@ router.post('/forgot-password', async (req, res) => {
 
         // Check if user exists
         const user = await User.findOne({
-            where: { email: email.toLowerCase() }
+            where: { userMail: email.toLowerCase() }
         });
 
         // Always return success message for security (don't reveal if email exists)
@@ -1266,7 +1266,7 @@ router.post('/forgot-password', async (req, res) => {
 
         // Generate temporary password (in a real app, you'd send a secure reset token)
         const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
-        console.log(`🔐 Generated temporary password for ${user.email}: ${tempPassword}`);
+        console.log(`🔐 Generated temporary password for ${user.userMail}: ${tempPassword}`);
 
         // Hash the temporary password using bcryptjs (same as rest of the app)
         const hashedPassword = await bcrypt.hash(tempPassword, 12);
@@ -1275,7 +1275,7 @@ router.post('/forgot-password', async (req, res) => {
         await user.update({ password: hashedPassword });
 
         // In production, send email with reset link instead
-        console.log(`📧 Temporary password for ${user.email}: ${tempPassword}`);
+        console.log(`📧 Temporary password for ${user.userMail}: ${tempPassword}`);
         
         res.json({
             success: true,
@@ -1324,7 +1324,7 @@ router.post('/logout', (req, res) => {
 router.get('/profile', authenticateToken, async (req, res) => {
     try {
         const user = await User.findByPk(req.user.userId, {
-            attributes: ['id', 'name', 'email', 'role', 'student_id', 'department', 'phone', 'bio', 'position', 'avatar_url', 'is_active', 'last_login', 'created_at']
+            attributes: ['userId', 'userName', 'userMail', 'roleId', 'userNumber', 'departmentId', 'status', 'profileImage', 'authProvider', 'createdAt', 'updatedAt']
         });
 
         if (!user) {
@@ -1336,7 +1336,10 @@ router.get('/profile', authenticateToken, async (req, res) => {
 
         res.json({
             success: true,
-            data: user
+            data: {
+                ...user.toJSON(),
+                role: ROLE_MAP[user.roleId]
+            }
         });
     } catch (error) {
         console.error('Error fetching profile:', error);

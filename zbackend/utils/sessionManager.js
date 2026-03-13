@@ -64,8 +64,8 @@ const createSession = (user) => {
     const sessionId = generateSessionId();
     const sessionData = {
         userId: user.userId || user.id, // Support both userId and id
-        email: user.email,
-        role: user.role,
+        userMail: user.userMail || user.email, // Support both new and old field names
+        roleId: user.roleId,
         createdAt: new Date(),
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
     };

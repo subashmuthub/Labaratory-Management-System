@@ -140,47 +140,29 @@ class MaintenanceService {
      * Create maintenance record
      */
     async createMaintenance(maintenanceData, userId) {
-        const {
-            equipment_id,
-            title,
-            description,
-            maintenance_type = 'preventive',
-            scheduled_date,
-            estimated_duration,
-            assigned_to,
-            priority = 'medium',
-            notes
-        } = maintenanceData;
+        // Accept both frontend field names and direct model field names
+        const equipment_name = maintenanceData.equipment_name || maintenanceData.equipment;
+        const maintenance_type = maintenanceData.maintenance_type || maintenanceData.type || 'preventive';
+        const scheduled_date = maintenanceData.scheduled_date || maintenanceData.date;
+        const technician_name = maintenanceData.technician_name || maintenanceData.technician || 'Unassigned';
+        const estimated_cost = maintenanceData.estimated_cost || maintenanceData.estimatedCost || 0;
+        const { description, priority = 'medium', notes, equipment_id } = maintenanceData;
 
-        // Validate required fields
-        if (!equipment_id || !title || !scheduled_date) {
-            throw new Error('Equipment, title, and scheduled date are required');
-        }
-
-        // Verify equipment exists
-        const equipment = await Equipment.findByPk(equipment_id);
-        if (!equipment || !equipment.is_active) {
-            throw new Error('Equipment not found or inactive');
-        }
-
-        // Verify assigned technician if provided
-        if (assigned_to) {
-            const technician = await User.findByPk(assigned_to);
-            if (!technician) {
-                throw new Error('Assigned technician not found');
-            }
+        // Validate required fields (equipment_name and scheduled_date are required by the DB schema)
+        if (!equipment_name || !scheduled_date) {
+            throw new Error('Equipment name and scheduled date are required');
         }
 
         const maintenance = await Maintenance.create({
-            equipment_id: parseInt(equipment_id),
-            title: title.trim(),
-            description: description?.trim() || null,
+            equipment_id: equipment_id ? parseInt(equipment_id) : null,
+            equipment_name: equipment_name.trim(),
             maintenance_type,
             scheduled_date: new Date(scheduled_date),
-            estimated_duration: estimated_duration ? parseInt(estimated_duration) : null,
-            assigned_to: assigned_to ? parseInt(assigned_to) : null,
-            priority,
+            technician_name: technician_name.trim(),
+            estimated_cost: parseFloat(estimated_cost) || 0,
+            description: description?.trim() || null,
             notes: notes?.trim() || null,
+            priority,
             status: 'scheduled',
             created_by: userId
         });
@@ -188,23 +170,23 @@ class MaintenanceService {
         // Create notification
         try {
             await createNotification({
-                user_id: assigned_to || userId,
+                user_id: userId,
                 type: 'maintenance',
                 title: 'Maintenance Scheduled',
-                message: `Maintenance "${title}" scheduled for ${equipment.name} on ${new Date(scheduled_date).toLocaleDateString()}.`,
+                message: `Maintenance for "${equipment_name}" scheduled on ${new Date(scheduled_date).toLocaleDateString()}.`,
                 metadata: {
                     maintenance_id: maintenance.id,
-                    equipment_id: equipment.id,
-                    equipment_name: equipment.name,
-                    scheduled_date: scheduled_date
+                    equipment_name,
+                    scheduled_date
                 }
             });
         } catch (notifError) {
             console.error('⚠️ Failed to create maintenance notification:', notifError.message);
         }
 
-        return await this.getMaintenanceById(maintenance.id);
+        return maintenance;
     }
+
 
     /**
      * Update maintenance record

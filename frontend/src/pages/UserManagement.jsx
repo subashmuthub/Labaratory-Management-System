@@ -250,7 +250,18 @@ export default function UserManagement() {
             console.log('✅ Is Array?:', Array.isArray(data))
             console.log('✅ Data length:', data?.length)
             
-            const usersArray = Array.isArray(data) ? data : []
+            const usersArray = (Array.isArray(data) ? data : []).map((u, index) => {
+                const normalizedId = u.id ?? u.userId ?? null
+                return {
+                    ...u,
+                    id: normalizedId,
+                    userId: u.userId ?? normalizedId,
+                    name: u.name ?? u.userName ?? '',
+                    email: u.email ?? u.userMail ?? '',
+                    role: u.role ?? '',
+                    _rowKey: normalizedId ?? `${u.email ?? u.userMail ?? 'user'}-${index}`,
+                }
+            })
             console.log('✅ Setting users:', usersArray.length, 'users')
             setUsers(usersArray)
         } catch (err) {
@@ -987,7 +998,7 @@ export default function UserManagement() {
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {filteredUsers.length > 0 ? (
                                         filteredUsers.map((userItem) => (
-                                            <tr key={userItem.id} className="hover:bg-gray-50">
+                                            <tr key={userItem._rowKey} className="hover:bg-gray-50">
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                                     #{userItem.id}
                                                 </td>

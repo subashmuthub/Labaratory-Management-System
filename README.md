@@ -13,11 +13,11 @@
 - Role-based access control (Student, Faculty, Admin, etc.)
 - Dashboard with statistics and recent activities
 - Lab Management: Create, update, view labs
-- Equipment Management: Add, update, view equipment
+<!-- - Equipment Management: Add, update, view equipment -->
 - Booking System: Reserve labs/equipment
 - Incident Reporting & Notifications
 - Calendar & Training Management
-- Admin features: User stats, order stats (restricted)
+<!-- - Admin features: User stats, order stats (restricted) -->
 
 ## Manual & Workflow
 1. **Setup:**

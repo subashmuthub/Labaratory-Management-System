@@ -4,7 +4,7 @@
 
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const User = require('../models/User');
+const User = require('../models/User').default ?? require('../models/User');
 const emailService = require('./emailService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';

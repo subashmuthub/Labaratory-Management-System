@@ -104,7 +104,8 @@ class OrderService {
             total_amount,
             status = 'Pending',
             priority = 'Medium',
-            notes,
+            description,
+            order_date,
             expected_delivery
         } = orderData;
 
@@ -121,7 +122,8 @@ class OrderService {
             total_amount: parseFloat(total_amount),
             status,
             priority,
-            notes: notes?.trim() || null,
+            description: description?.trim() || null,
+            order_date: order_date ? new Date(order_date) : undefined,
             expected_delivery: expected_delivery ? new Date(expected_delivery) : null,
             created_by: userId
         });

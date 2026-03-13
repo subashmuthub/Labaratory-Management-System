@@ -2,6 +2,9 @@
 const { User } = require('../models');
 const { getSession } = require('../utils/sessionManager');
 
+// Role mapping for backward compatibility
+const ROLE_MAP = { 1: 'student', 2: 'faculty', 3: 'teacher', 4: 'lab_assistant', 5: 'lab_technician', 6: 'admin' };
+
 // Session-based authentication middleware
 const authenticateToken = async (req, res, next) => {
     try {
@@ -32,11 +35,11 @@ const authenticateToken = async (req, res, next) => {
             });
         }
 
-        console.log('✅ Session verified for user:', session.email);
+        console.log('✅ Session verified for user:', session.userMail || session.email);
 
         // Get user from database to ensure they still exist and are active
         const user = await User.unscoped().findByPk(session.userId, {
-            attributes: { exclude: ['password', 'otp_code', 'otp_expires_at', 'reset_password_token'] }
+            attributes: { exclude: ['password'] }
         });
 
         if (!user) {
@@ -47,44 +50,37 @@ const authenticateToken = async (req, res, next) => {
             });
         }
 
-        // Check if user is active (supports both old and new fields)
-        const isActive = user.is_active === true || user.is_active === 1 || user.status === 'Active';
-        if (!isActive) {
-            console.log('❌ User account is inactive:', user.email);
+        // Check if user is active
+        if (user.status !== 'Active') {
+            console.log('❌ User account is inactive:', user.userMail);
             return res.status(401).json({
                 success: false,
                 message: 'Access denied. Account is inactive.'
             });
         }
 
-        // Set user object — both old fields (backward compat) and new RBAC fields
+        // Set user object with new schema fields
         req.user = {
-            // Old fields
-            id: user.id,
-            email: user.email,
-            role: user.role,
-            name: user.name,
-            is_active: user.is_active,
-            department: user.department,
-            phone: user.phone,
-            position: user.position,
-            student_id: user.student_id,
-            avatar_url: user.avatar_url,
-            is_email_verified: user.is_email_verified,
-            // New RBAC fields
-            userId: user.userId || user.id,
-            userName: user.userName || user.name,
-            userMail: user.userMail || user.email,
+            userId: user.userId,
+            userName: user.userName,
+            userMail: user.userMail,
             roleId: user.roleId,
+            role: ROLE_MAP[user.roleId], // Derived from roleId
             departmentId: user.departmentId,
             companyId: user.companyId,
             userNumber: user.userNumber,
             status: user.status,
-            profileImage: user.profileImage || user.avatar_url,
-            authProvider: user.authProvider
+            profileImage: user.profileImage,
+            googleId: user.googleId,
+            authProvider: user.authProvider,
+            // Backward compatibility aliases
+            id: user.userId,
+            email: user.userMail,
+            name: user.userName,
+            is_active: user.status === 'Active'
         };
 
-        console.log('✅ Authentication successful for:', req.user.email);
+        console.log('✅ Authentication successful for:', req.user.userMail);
         next();
 
     } catch (error) {
@@ -116,10 +112,10 @@ const requireRole = (allowedRoles) => {
             });
         }
 
-        const userRole = req.user.role;
+        const userRole = req.user.role; // Already derived from roleId via ROLE_MAP
         const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
 
-        // Normalize role values to match database ENUM (handle spaces and underscores)
+        // Normalize role values (handle spaces and underscores)
         const normalizedUserRole = userRole ? userRole.toLowerCase().replace(/ /g, '_') : '';
         const normalizedRoles = roles.map(r => r.toLowerCase().replace(/ /g, '_'));
 
@@ -134,7 +130,7 @@ const requireRole = (allowedRoles) => {
             });
         }
 
-        console.log('✅ Role access granted for:', req.user.email);
+        console.log('✅ Role access granted for:', req.user.userMail);
         next();
     };
 };

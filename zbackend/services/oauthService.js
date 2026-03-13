@@ -2,6 +2,8 @@
 const axios = require('axios');
 const { User } = require('../models');
 
+const ROLE_MAP = { 1: 'student', 2: 'faculty', 3: 'teacher', 4: 'lab_assistant', 5: 'lab_technician', 6: 'admin' };
+
 class OAuthService {
     // Google OAuth Token Exchange
     static async exchangeGoogleCodeForToken(code) {
@@ -144,77 +146,61 @@ class OAuthService {
                 throw new Error('No email provided by OAuth provider');
             }
 
-            // Check if user exists
-            let user = await User.findOne({ where: { email } });
+            // Check if user exists — use userMail (new schema column)
+            let user = await User.findOne({ where: { userMail: email } });
             console.log(`👤 User lookup for ${email}:`, user ? 'Found existing user' : 'New user');
 
             if (user) {
                 // Update existing user with OAuth info
-                const updateFields = {
-                    is_email_verified: true, // OAuth providers verify emails
-                    last_login: new Date(),
-                };
+                const updateFields = {};
                 
-                // Update avatar URL if available
-                if (profile.avatar_url || profile.picture) {
-                    updateFields.avatar_url = profile.avatar_url || profile.picture;
-                }
-                
-                // Set the correct OAuth ID field (both old and new schema columns)
+                // Set the correct OAuth ID field (new RBAC schema columns)
                 if (provider === 'google') {
-                    updateFields.google_id = profile.id;  // old column
-                    updateFields.googleId = profile.id;   // new RBAC schema column
+                    updateFields.googleId = profile.id;
                     updateFields.authProvider = 'google';
-                } else if (provider === 'github') {
-                    updateFields.github_id = profile.id;
                 }
                 
-                console.log(`🔄 Updating existing user with fields:`, Object.keys(updateFields));
-                
-                try {
-                    await user.update(updateFields);
-                    console.log(`✅ Successfully updated user ${user.id} with OAuth data`);
-                } catch (updateError) {
-                    console.error(`❌ Error updating user ${user.id}:`, updateError.message);
-                    throw new Error(`Failed to update user: ${updateError.message}`);
+                if (Object.keys(updateFields).length > 0) {
+                    console.log(`🔄 Updating existing user with fields:`, Object.keys(updateFields));
+                    try {
+                        await user.update(updateFields);
+                        console.log(`✅ Successfully updated user ${user.userId} with OAuth data`);
+                    } catch (updateError) {
+                        console.error(`❌ Error updating user ${user.userId}:`, updateError.message);
+                        // Don't throw — login can proceed even if update fails
+                    }
                 }
             } else {
                 // Create new user from OAuth profile
                 const displayName = profile.name || profile.login || 'OAuth User';
+                
+                // Generate unique userNumber for OAuth users
+                const userNumber = `USR${Date.now()}${Math.floor(Math.random() * 1000)}`;
+                
+                // Generate random password for OAuth users (required by schema but never used)
+                const bcrypt = require('bcryptjs');
+                const randomPassword = await bcrypt.hash(Math.random().toString(36), 12);
+                
                 const createFields = {
-                    name: displayName,
-                    email: email,
-                    password: null, // OAuth users don't have passwords
-                    role: 'student', // Default role (must match enum in User model)
-                    is_active: true, // OAuth users are active by default
-                    is_email_verified: true,
-                    last_login: new Date(),
-                    // New RBAC schema fields
                     userMail: email,
                     userName: displayName,
-                    roleId: 1, // Student role
+                    password: randomPassword,
+                    roleId: 1,        // Student role by default
+                    userNumber: userNumber,
                     status: 'Active',
                 };
                 
-                // Add avatar URL if available
-                if (profile.avatar_url || profile.picture) {
-                    createFields.avatar_url = profile.avatar_url || profile.picture;
-                }
-                
-                // Set the correct OAuth ID field (both old and new schema columns)
+                // Set provider-specific OAuth fields
                 if (provider === 'google') {
-                    createFields.google_id = profile.id;  // old column
-                    createFields.googleId = profile.id;   // new RBAC schema column
+                    createFields.googleId = String(profile.id);
                     createFields.authProvider = 'google';
-                } else if (provider === 'github') {
-                    createFields.github_id = profile.id;
                 }
                 
-                console.log(`👤 Creating new ${provider} OAuth user:`, createFields);
+                console.log(`👤 Creating new ${provider} OAuth user:`, { ...createFields, password: '***' });
                 
                 try {
                     user = await User.create(createFields);
-                    console.log(`✅ New ${provider} user created successfully:`, user.id);
+                    console.log(`✅ New ${provider} user created successfully: userId=${user.userId}`);
                 } catch (createError) {
                     console.error(`❌ Error creating new user:`, createError.message);
                     if (createError.name === 'SequelizeValidationError') {
@@ -230,6 +216,7 @@ class OAuthService {
             throw error;
         }
     }
+
 
 
     // Process Google OAuth
@@ -252,12 +239,12 @@ class OAuthService {
                 success: true,
                 data: {
                     user: {
-                        id: user.id,
-                        name: user.name,
-                        email: user.email,
-                        role: user.role,
-                        is_active: user.is_active,
-                        is_email_verified: user.is_email_verified,
+                        id: user.userId,
+                        userId: user.userId,
+                        name: user.userName,
+                        email: user.userMail,
+                        role: ROLE_MAP[user.roleId],
+                        status: user.status,
                     }
                 }
             };
@@ -290,12 +277,12 @@ class OAuthService {
                 success: true,
                 data: {
                     user: {
-                        id: user.id,
-                        name: user.name,
-                        email: user.email,
-                        role: user.role,
-                        is_active: user.is_active,
-                        is_email_verified: user.is_email_verified,
+                        id: user.userId,
+                        userId: user.userId,
+                        name: user.userName,
+                        email: user.userMail,
+                        role: ROLE_MAP[user.roleId],
+                        status: user.status,
                     }
                 }
             };

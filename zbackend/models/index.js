@@ -4,7 +4,7 @@ const { sequelize } = require('../config/database');
 // Import all models
 const Lab = require('./Lab');
 const Equipment = require('./Equipment');
-const User = require('./User');
+const User = require('./User').default ?? require('./User');
 const Booking = require('./Booking');
 const Notification = require('./Notification');
 const NotificationSettings = require('./NotificationSettings');
@@ -17,8 +17,8 @@ const Training = require('./Training');
 const TrainingCertification = require('./TrainingCertification');
 const RecentlyAccessed = require('./RecentlyAccessed');
 
-const Role = require('./Role');
-const Department = require('./Department');
+const Role = require('./Role').default ?? require('./Role');
+const Department = require('./Department').default ?? require('./Department');
 
 // ============= ASSOCIATIONS =============
 
@@ -303,10 +303,10 @@ Report.belongsTo(ReportSchedule, {
 });
 
 // ============= RBAC ASSOCIATIONS =============
-User.belongsTo(Role,       { foreignKey: 'roleId',       as: 'role_info',       constraints: false });
-Role.hasMany(User,         { foreignKey: 'roleId',       as: 'users',           constraints: false });
-User.belongsTo(Department, { foreignKey: 'departmentId', as: 'department_info', constraints: false });
-Department.hasMany(User,   { foreignKey: 'departmentId', as: 'dept_users',      constraints: false });
+User.belongsTo(Role,       { foreignKey: 'roleId',       as: 'role',       constraints: false });
+Role.hasMany(User,         { foreignKey: 'roleId',       as: 'role_users', constraints: false });
+User.belongsTo(Department, { foreignKey: 'departmentId', as: 'department', constraints: false });
+Department.hasMany(User,   { foreignKey: 'departmentId', as: 'users',      constraints: false });
 
 console.log('✅ Model associations defined successfully');
 
